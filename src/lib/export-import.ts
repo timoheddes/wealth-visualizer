@@ -1,3 +1,5 @@
+import type { MutationLinkGroup } from "@/lib/mutation-links";
+import { sanitizeLinkGroups } from "@/lib/mutation-links";
 import type { AppState } from "@/lib/storage";
 import { parseStoredPayload, toStoredPayload } from "@/lib/storage";
 import type { Theme } from "@/lib/theme";
@@ -10,6 +12,7 @@ export interface ExportBundle {
   theme: Theme;
   enabledSourceIds: string[];
   enabledMutationIds: string[];
+  mutationLinkGroups?: MutationLinkGroup[];
   data: ReturnType<typeof toStoredPayload>;
 }
 
@@ -21,6 +24,7 @@ export interface ImportResult {
   theme: Theme;
   enabledSourceIds: Set<string>;
   enabledMutationIds: Set<string>;
+  mutationLinkGroups: MutationLinkGroup[];
 }
 
 function isTheme(value: unknown): value is Theme {
@@ -37,6 +41,7 @@ export function createExportBundle(input: {
   theme: Theme;
   enabledSourceIds: Set<string>;
   enabledMutationIds: Set<string>;
+  mutationLinkGroups: MutationLinkGroup[];
 }): ExportBundle {
   return {
     formatVersion: EXPORT_FORMAT_VERSION,
@@ -44,6 +49,7 @@ export function createExportBundle(input: {
     theme: input.theme,
     enabledSourceIds: [...input.enabledSourceIds],
     enabledMutationIds: [...input.enabledMutationIds],
+    mutationLinkGroups: input.mutationLinkGroups,
     data: toStoredPayload(input.appState),
   };
 }
@@ -91,11 +97,17 @@ export function parseImportBundle(parsed: unknown): ImportResult | null {
     if (!enabledMutationIds.has(id)) enabledMutationIds.add(id);
   }
 
+  const mutationLinkGroups = sanitizeLinkGroups(
+    bundle.mutationLinkGroups,
+    mutationIds,
+  );
+
   return {
     ...appState,
     theme,
     enabledSourceIds,
     enabledMutationIds,
+    mutationLinkGroups,
   };
 }
 

@@ -28,6 +28,13 @@ import type { Currency, Mutation, Source, TimeRange } from "@/types/wealth";
 import { MUTATION_TYPE_LABELS, WEALTH_TYPE_LABELS } from "@/types/wealth";
 import { loadAppState, saveAppState } from "@/lib/storage";
 import type { ImportResult } from "@/lib/export-import";
+import {
+  createLinkGroup,
+  getLinkedMutationIds,
+  removeLinkGroup,
+  removeMutationFromLinkGroups,
+  type MutationLinkGroup,
+} from "@/lib/mutation-links";
 import { applyTheme, getStoredTheme, setStoredTheme, type Theme } from "@/lib/theme";
 import { useEffect, useMemo, useState } from "react";
 
@@ -47,6 +54,9 @@ export default function App() {
   const [enabledMutationIds, setEnabledMutationIds] = useState<Set<string>>(
     () => new Set(initialState.mutations.map((m) => m.id)),
   );
+  const [mutationLinkGroups, setMutationLinkGroups] = useState<
+    MutationLinkGroup[]
+  >([]);
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
 
   useEffect(() => {
@@ -168,6 +178,10 @@ export default function App() {
   }
 
   function handleRemoveSource(id: string) {
+    const removedMutationIds = mutations
+      .filter((m) => m.target === "source" && m.sourceId === id)
+      .map((m) => m.id);
+
     setSources((prev) => prev.filter((s) => s.id !== id));
     setMutations((prev) =>
       prev.filter((m) => m.target !== "source" || m.sourceId !== id),
@@ -187,6 +201,13 @@ export default function App() {
       }
       return next;
     });
+    setMutationLinkGroups((prev) =>
+      removedMutationIds.reduce(
+        (groups, mutationId) =>
+          removeMutationFromLinkGroups(groups, mutationId),
+        prev,
+      ),
+    );
   }
 
   function handleRemoveMutation(id: string) {
@@ -196,6 +217,7 @@ export default function App() {
       next.delete(id);
       return next;
     });
+    setMutationLinkGroups((prev) => removeMutationFromLinkGroups(prev, id));
   }
 
   function toggleSourceVisibility(id: string) {
@@ -208,12 +230,24 @@ export default function App() {
   }
 
   function toggleMutationVisibility(id: string) {
+    const linkedIds = getLinkedMutationIds(mutationLinkGroups, id);
     setEnabledMutationIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const willEnable = !prev.has(id);
+      for (const mutationId of linkedIds) {
+        if (willEnable) next.add(mutationId);
+        else next.delete(mutationId);
+      }
       return next;
     });
+  }
+
+  function handleCreateMutationLink(mutationIds: string[]) {
+    setMutationLinkGroups((prev) => createLinkGroup(prev, mutationIds));
+  }
+
+  function handleRemoveMutationLink(groupId: string) {
+    setMutationLinkGroups((prev) => removeLinkGroup(prev, groupId));
   }
 
   function handleImport(data: ImportResult) {
@@ -224,6 +258,7 @@ export default function App() {
     setTheme(data.theme);
     setEnabledSourceIds(data.enabledSourceIds);
     setEnabledMutationIds(data.enabledMutationIds);
+    setMutationLinkGroups(data.mutationLinkGroups);
   }
 
   return (
@@ -245,6 +280,7 @@ export default function App() {
               theme={theme}
               enabledSourceIds={enabledSourceIds}
               enabledMutationIds={enabledMutationIds}
+              mutationLinkGroups={mutationLinkGroups}
               onImport={handleImport}
             />
             <ThemeToggle theme={theme} onChange={setTheme} />
@@ -467,8 +503,11 @@ export default function App() {
                 currency={currency}
                 enabledSourceIds={enabledSourceIds}
                 enabledMutationIds={enabledMutationIds}
+                mutationLinkGroups={mutationLinkGroups}
                 onToggleSource={toggleSourceVisibility}
                 onToggleMutation={toggleMutationVisibility}
+                onCreateMutationLink={handleCreateMutationLink}
+                onRemoveMutationLink={handleRemoveMutationLink}
               />
             </CardContent>
           </Card>

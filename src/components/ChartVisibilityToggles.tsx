@@ -1,11 +1,24 @@
-import { formatCurrency, formatShortDate } from "@/lib/wealth-calculations";
-import { cn } from "@/lib/utils";
+import { useMemo, useState } from "react";
+import { Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { formatCurrency, formatShortDate } from "@/lib/wealth-calculations";
+import {
+  getLinkGroupColor,
+  getLinkGroupForMutation,
+  type MutationLinkGroup,
+} from "@/lib/mutation-links";
+import { cn } from "@/lib/utils";
 import type { Currency, Mutation, Source } from "@/types/wealth";
 
 interface ChartVisibilityTogglesProps {
@@ -14,8 +27,11 @@ interface ChartVisibilityTogglesProps {
   currency: Currency;
   enabledSourceIds: Set<string>;
   enabledMutationIds: Set<string>;
+  mutationLinkGroups: MutationLinkGroup[];
   onToggleSource: (id: string) => void;
   onToggleMutation: (id: string) => void;
+  onCreateMutationLink: (mutationIds: string[]) => void;
+  onRemoveMutationLink: (groupId: string) => void;
 }
 
 type Sign = "positive" | "negative" | "neutral";
@@ -88,6 +104,61 @@ function SignIndicator({
   );
 }
 
+function LinkGroupIndicator({
+  group,
+  linkedLabels,
+  groupColor,
+  onRemoveLink,
+}: {
+  group: MutationLinkGroup;
+  linkedLabels: string[];
+  groupColor: string;
+  onRemoveLink: (groupId: string) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground flex size-5 shrink-0 cursor-help items-center justify-center rounded transition-colors"
+          aria-label={`Linked with ${linkedLabels.join(", ")}`}
+        >
+          <Link2 className="size-3.5" style={{ color: groupColor }} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-3 p-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Linked mutations</p>
+          <p className="text-muted-foreground text-xs">
+            Toggling one shows or hides all linked mutations together.
+          </p>
+        </div>
+        <ul className="space-y-1 text-sm">
+          {linkedLabels.map((label) => (
+            <li key={label} className="flex items-center gap-2">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: groupColor }}
+                aria-hidden
+              />
+              <span className="truncate">{label}</span>
+            </li>
+          ))}
+        </ul>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => onRemoveLink(group.id)}
+        >
+          Unlink group
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function VisibilityToggle({
   enabled,
   onToggle,
@@ -99,6 +170,13 @@ function VisibilityToggle({
   currency,
   description,
   disabled = false,
+  linkMode = false,
+  selected = false,
+  onSelectChange,
+  linkGroup,
+  linkedLabels = [],
+  groupColor,
+  onRemoveLink,
 }: {
   enabled: boolean;
   onToggle: () => void;
@@ -110,15 +188,46 @@ function VisibilityToggle({
   currency: Currency;
   description?: string;
   disabled?: boolean;
+  linkMode?: boolean;
+  selected?: boolean;
+  onSelectChange?: (selected: boolean) => void;
+  linkGroup?: MutationLinkGroup | null;
+  linkedLabels?: string[];
+  groupColor?: string;
+  onRemoveLink?: (groupId: string) => void;
 }) {
   return (
     <div
       className={cn(
         "flex items-center justify-between gap-3 rounded-md border px-3 py-2",
         disabled && "opacity-50",
+        linkGroup && "border-l-2",
       )}
+      style={
+        linkGroup && groupColor
+          ? { borderLeftColor: groupColor }
+          : undefined
+      }
     >
       <div className="flex min-w-0 items-center gap-2">
+        {linkMode && onSelectChange && (
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={disabled}
+            onChange={(e) => onSelectChange(e.target.checked)}
+            className="size-4 shrink-0 rounded border"
+            aria-label={`Select ${label} for linking`}
+          />
+        )}
+        {linkGroup && groupColor && onRemoveLink && (
+          <LinkGroupIndicator
+            group={linkGroup}
+            linkedLabels={linkedLabels}
+            groupColor={groupColor}
+            onRemoveLink={onRemoveLink}
+          />
+        )}
         {color && (
           <span
             className={cn(
@@ -176,15 +285,81 @@ function VisibilityToggle({
   );
 }
 
+function MutationVisibilityToggle({
+  mutation,
+  mutations,
+  currency,
+  enabled,
+  disabled,
+  linkMode,
+  selected,
+  onSelectChange,
+  mutationLinkGroups,
+  onToggle,
+  onRemoveMutationLink,
+}: {
+  mutation: Mutation;
+  mutations: Mutation[];
+  currency: Currency;
+  enabled: boolean;
+  disabled?: boolean;
+  linkMode: boolean;
+  selected: boolean;
+  onSelectChange: (selected: boolean) => void;
+  mutationLinkGroups: MutationLinkGroup[];
+  onToggle: () => void;
+  onRemoveMutationLink: (groupId: string) => void;
+}) {
+  const linkGroup = getLinkGroupForMutation(mutationLinkGroups, mutation.id);
+  const linkedLabels = useMemo(() => {
+    if (!linkGroup) return [];
+    return linkGroup.mutationIds
+      .map((id) => mutations.find((m) => m.id === id)?.label)
+      .filter((label): label is string => Boolean(label));
+  }, [linkGroup, mutations]);
+
+  const groupColor = linkGroup
+    ? getLinkGroupColor(linkGroup.id, mutationLinkGroups)
+    : undefined;
+
+  return (
+    <VisibilityToggle
+      enabled={enabled}
+      onToggle={onToggle}
+      label={mutation.label}
+      sign={valueSign(mutation.value)}
+      mutationValue={mutation.value}
+      currency={currency}
+      description={mutationDescription(mutation)}
+      disabled={disabled}
+      linkMode={linkMode}
+      selected={selected}
+      onSelectChange={onSelectChange}
+      linkGroup={linkGroup}
+      linkedLabels={linkedLabels}
+      groupColor={groupColor}
+      onRemoveLink={onRemoveMutationLink}
+    />
+  );
+}
+
 export function ChartVisibilityToggles({
   sources,
   mutations,
   currency,
   enabledSourceIds,
   enabledMutationIds,
+  mutationLinkGroups,
   onToggleSource,
   onToggleMutation,
+  onCreateMutationLink,
+  onRemoveMutationLink,
 }: ChartVisibilityTogglesProps) {
+  const [linkMode, setLinkMode] = useState(false);
+  const [selectedMutationIds, setSelectedMutationIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   if (sources.length === 0 && mutations.length === 0) return null;
 
   const totalMutations = mutations.filter((m) => m.target === "total");
@@ -197,105 +372,174 @@ export function ChartVisibilityToggles({
     }))
     .filter((group) => group.mutations.length > 0);
 
+  function exitLinkMode() {
+    setLinkMode(false);
+    setSelectedMutationIds(new Set());
+  }
+
+  function toggleMutationSelection(id: string, selected: boolean) {
+    setSelectedMutationIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function handleCreateLink() {
+    if (selectedMutationIds.size < 2) return;
+    onCreateMutationLink([...selectedMutationIds]);
+    exitLinkMode();
+  }
+
+  function renderMutationToggle(
+    mutation: Mutation,
+    options?: { disabled?: boolean },
+  ) {
+    const sourceDisabled =
+      mutation.target === "source" &&
+      mutation.sourceId != null &&
+      !enabledSourceIds.has(mutation.sourceId);
+
+    return (
+      <MutationVisibilityToggle
+        key={mutation.id}
+        mutation={mutation}
+        mutations={mutations}
+        currency={currency}
+        enabled={
+          !sourceDisabled && enabledMutationIds.has(mutation.id)
+        }
+        disabled={options?.disabled ?? sourceDisabled}
+        linkMode={linkMode}
+        selected={selectedMutationIds.has(mutation.id)}
+        onSelectChange={(selected) =>
+          toggleMutationSelection(mutation.id, selected)
+        }
+        mutationLinkGroups={mutationLinkGroups}
+        onToggle={() => onToggleMutation(mutation.id)}
+        onRemoveMutationLink={onRemoveMutationLink}
+      />
+    );
+  }
+
   return (
     <TooltipProvider>
       <div className="space-y-4 border-t pt-6">
-      <div>
-        <h3 className="text-sm font-medium">Chart visibility</h3>
-        <p className="text-muted-foreground text-xs">
-          Toggle sources and mutations on or off without removing them.
-        </p>
-      </div>
-
-      {sources.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Sources
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {sources.map((source) => (
-              <VisibilityToggle
-                key={source.id}
-                enabled={enabledSourceIds.has(source.id)}
-                onToggle={() => onToggleSource(source.id)}
-                label={source.label}
-                color={source.color}
-                growth={source.growth}
-                currency={currency}
-              />
-            ))}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-medium">Chart visibility</h3>
+            <p className="text-muted-foreground text-xs">
+              Toggle sources and mutations on or off without removing them.
+            </p>
           </div>
-        </div>
-      )}
-
-      {mutations.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Mutations
-          </p>
-
-          {totalMutations.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-muted-foreground flex items-center gap-2 text-xs">
-                <span
-                  className="size-2 shrink-0 rounded-full bg-foreground"
-                  aria-hidden
-                />
-                Total
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {totalMutations.map((mutation) => (
-                  <VisibilityToggle
-                    key={mutation.id}
-                    enabled={enabledMutationIds.has(mutation.id)}
-                    onToggle={() => onToggleMutation(mutation.id)}
-                    label={mutation.label}
-                    color={undefined}
-                    sign={valueSign(mutation.value)}
-                    mutationValue={mutation.value}
-                    currency={currency}
-                    description={mutationDescription(mutation)}
-                  />
-                ))}
-              </div>
+          {mutations.length >= 2 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {linkMode ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={selectedMutationIds.size < 2}
+                    onClick={handleCreateLink}
+                  >
+                    Link selected ({selectedMutationIds.size})
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={exitLinkMode}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLinkMode(true)}
+                >
+                  <Link2 className="size-4" />
+                  Link mutations
+                </Button>
+              )}
             </div>
           )}
-
-          {mutationsBySource.map(({ source, mutations: groupMutations }) => (
-            <div key={source.id} className="space-y-2">
-              <p className="text-muted-foreground flex items-center gap-2 text-xs">
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: source.color }}
-                  aria-hidden
-                />
-                {source.label}
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {groupMutations.map((mutation) => {
-                  const sourceEnabled = enabledSourceIds.has(source.id);
-                  return (
-                    <VisibilityToggle
-                      key={mutation.id}
-                      enabled={
-                        sourceEnabled && enabledMutationIds.has(mutation.id)
-                      }
-                      disabled={!sourceEnabled}
-                      onToggle={() => onToggleMutation(mutation.id)}
-                      label={mutation.label}
-                      color={undefined}
-                      sign={valueSign(mutation.value)}
-                      mutationValue={mutation.value}
-                      currency={currency}
-                      description={mutationDescription(mutation)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
         </div>
-      )}
+
+        {linkMode && (
+          <p className="text-muted-foreground text-xs">
+            Select two or more mutations to link. Linked mutations toggle
+            together — useful for one-off events and recurring transfer pairs.
+          </p>
+        )}
+
+        {sources.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Sources
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {sources.map((source) => (
+                <VisibilityToggle
+                  key={source.id}
+                  enabled={enabledSourceIds.has(source.id)}
+                  onToggle={() => onToggleSource(source.id)}
+                  label={source.label}
+                  color={source.color}
+                  growth={source.growth}
+                  currency={currency}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mutations.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Mutations
+            </p>
+
+            {totalMutations.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                  <span
+                    className="size-2 shrink-0 rounded-full bg-foreground"
+                    aria-hidden
+                  />
+                  Total
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {totalMutations.map((mutation) => renderMutationToggle(mutation))}
+                </div>
+              </div>
+            )}
+
+            {mutationsBySource.map(({ source, mutations: groupMutations }) => (
+              <div key={source.id} className="space-y-2">
+                <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: source.color }}
+                    aria-hidden
+                  />
+                  {source.label}
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {groupMutations.map((mutation) => {
+                    const sourceEnabled = enabledSourceIds.has(source.id);
+                    return renderMutationToggle(mutation, {
+                      disabled: !sourceEnabled,
+                    });
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );

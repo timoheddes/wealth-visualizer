@@ -9,12 +9,14 @@ import {
   type ImportResult,
 } from "@/lib/export-import";
 import type { Theme } from "@/lib/theme";
+import type { MutationLinkGroup } from "@/lib/mutation-links";
 
 interface DataTransferControlsProps {
   appState: AppState;
   theme: Theme;
   enabledSourceIds: Set<string>;
   enabledMutationIds: Set<string>;
+  mutationLinkGroups: MutationLinkGroup[];
   onImport: (data: ImportResult) => void;
 }
 
@@ -23,6 +25,7 @@ export function DataTransferControls({
   theme,
   enabledSourceIds,
   enabledMutationIds,
+  mutationLinkGroups,
   onImport,
 }: DataTransferControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +37,7 @@ export function DataTransferControls({
       theme,
       enabledSourceIds,
       enabledMutationIds,
+      mutationLinkGroups,
     });
     downloadExportBundle(bundle);
   }
