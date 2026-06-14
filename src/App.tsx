@@ -47,6 +47,37 @@ export default function App() {
     return range ?? bounds;
   }, [bounds, range]);
 
+  const mutationsBySource = useMemo((): Array<{
+    source: Source | null;
+    mutations: Mutation[];
+  }> => {
+    const bySourceId = new Map<string, Mutation[]>();
+    for (const mutation of mutations) {
+      const group = bySourceId.get(mutation.sourceId) ?? [];
+      group.push(mutation);
+      bySourceId.set(mutation.sourceId, group);
+    }
+
+    const grouped: Array<{ source: Source | null; mutations: Mutation[] }> =
+      sources
+        .filter((source) => bySourceId.has(source.id))
+        .map((source) => ({
+          source,
+          mutations: bySourceId.get(source.id)!,
+        }));
+
+    for (const [sourceId, sourceMutations] of bySourceId) {
+      if (!sources.some((s) => s.id === sourceId)) {
+        grouped.push({
+          source: null,
+          mutations: sourceMutations,
+        });
+      }
+    }
+
+    return grouped;
+  }, [mutations, sources]);
+
   function handleAddSource(source: Omit<Source, "id">) {
     setSources((prev) => [...prev, { ...source, id: createId() }]);
   }
@@ -183,69 +214,88 @@ export default function App() {
                 <CardTitle>Mutations</CardTitle>
                 <CardDescription>{mutations.length} recorded</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {mutations.map((mutation) => {
-                  const source = sources.find(
-                    (s) => s.id === mutation.sourceId,
-                  );
-                  return (
-                    <div
-                      key={mutation.id}
-                      className="flex items-start justify-between gap-2 rounded-lg border p-3"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className="size-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: mutation.color }}
-                            aria-hidden
-                          />
-                          <span className="truncate font-medium">
-                            {mutation.label}
-                          </span>
-                          <Badge variant="secondary">
-                            {MUTATION_TYPE_LABELS[mutation.type]}
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                          {source?.label ?? "Unknown source"} ·{" "}
-                          {mutation.type === "recurring"
-                            ? `Every ${mutation.frequency}d from ${formatShortDate(mutation.date)}`
-                            : formatShortDate(mutation.date)}
-                          {mutation.type === "recurring" && mutation.endDate
-                            ? ` → ${formatShortDate(mutation.endDate)}`
-                            : ""}
-                        </p>
-                        <p
-                          className={`text-sm font-medium tabular-nums ${
-                            mutation.value >= 0
-                              ? "text-emerald-600"
-                              : "text-destructive"
-                          }`}
-                        >
-                          {mutation.value >= 0 ? "+" : ""}
-                          {formatCurrency(mutation.value, currency)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 gap-0.5">
-                        <EditMutationPopover
-                          mutation={mutation}
-                          sources={sources}
-                          onSave={handleUpdateMutation}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveMutation(mutation.id)}
-                          aria-label={`Remove ${mutation.label}`}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
+              <CardContent className="space-y-4">
+                {mutationsBySource.map(({ source, mutations: groupMutations }) => (
+                  <div
+                    key={source?.id ?? "unknown"}
+                    className="overflow-hidden rounded-lg border"
+                  >
+                    <div className="bg-muted/50 flex items-center gap-2 border-b px-3 py-2">
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: source?.color ?? "var(--muted-foreground)",
+                        }}
+                        aria-hidden
+                      />
+                      <span className="truncate text-sm font-medium">
+                        {source?.label ?? "Unknown source"}
+                      </span>
+                      <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                        {groupMutations.length}{" "}
+                        {groupMutations.length === 1 ? "mutation" : "mutations"}
+                      </span>
                     </div>
-                  );
-                })}
+                    <div className="divide-y">
+                      {groupMutations.map((mutation) => (
+                        <div
+                          key={mutation.id}
+                          className="flex items-start justify-between gap-2 p-3"
+                        >
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className="size-2.5 shrink-0 rounded-full"
+                                style={{ backgroundColor: mutation.color }}
+                                aria-hidden
+                              />
+                              <span className="truncate font-medium">
+                                {mutation.label}
+                              </span>
+                              <Badge variant="secondary">
+                                {MUTATION_TYPE_LABELS[mutation.type]}
+                              </Badge>
+                            </div>
+                            <p className="text-muted-foreground text-xs">
+                              {mutation.type === "recurring"
+                                ? `Every ${mutation.frequency}d from ${formatShortDate(mutation.date)}`
+                                : formatShortDate(mutation.date)}
+                              {mutation.type === "recurring" && mutation.endDate
+                                ? ` → ${formatShortDate(mutation.endDate)}`
+                                : ""}
+                            </p>
+                            <p
+                              className={`text-sm font-medium tabular-nums ${
+                                mutation.value >= 0
+                                  ? "text-emerald-600"
+                                  : "text-destructive"
+                              }`}
+                            >
+                              {mutation.value >= 0 ? "+" : ""}
+                              {formatCurrency(mutation.value, currency)}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 gap-0.5">
+                            <EditMutationPopover
+                              mutation={mutation}
+                              sources={sources}
+                              onSave={handleUpdateMutation}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveMutation(mutation.id)}
+                              aria-label={`Remove ${mutation.label}`}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
