@@ -179,9 +179,9 @@ export function HowItWorksSheet({
               <li>
                 One-off <strong className="text-foreground">sell home</strong>{" "}
                 (removes the property at its sale value),{" "}
-                <strong className="text-foreground">sale proceeds</strong> (the
-                full sale price to Index fund), and{" "}
-                <strong className="text-foreground">mortgage payoff</strong>{" "}
+                <strong className="text-foreground">sale proceeds</strong> (net
+                cash after paying off the mortgage, deposited to Investments),
+                and <strong className="text-foreground">mortgage payoff</strong>{" "}
                 (zeros the remaining mortgage balance) — all on the same date
               </li>
             </ul>

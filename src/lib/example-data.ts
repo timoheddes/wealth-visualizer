@@ -87,10 +87,11 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
   ];
 
   // Sale price at the sale date (grown property value). The sell mutation
-  // removes the home line; sale proceeds deposit that cash into investments.
+  // removes the home line; net sale proceeds (after mortgage payoff) go to
+  // investments.
   const saleProceeds = Math.round(sourceValueAt(homeSource, saleDate));
 
-  const mutationsBeforePayoff: Mutation[] = [
+  const mutationsBeforeSale: Mutation[] = [
     {
       id: MUTATION_IDS.salary,
       target: "source",
@@ -151,6 +152,21 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       endDate: null,
       color: "#be4bdb",
     },
+  ];
+
+  const mortgageBalanceAtSale = Math.round(
+    sourceValueWithMutations(
+      mortgageSource,
+      sources,
+      mutationsBeforeSale,
+      saleDate,
+    ),
+  );
+
+  const netSaleProceeds = saleProceeds - mortgageBalanceAtSale;
+
+  const mutations: Mutation[] = [
+    ...mutationsBeforeSale,
     {
       id: MUTATION_IDS.sellHome,
       target: "source",
@@ -167,7 +183,7 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       id: MUTATION_IDS.saleProfit,
       target: "source",
       sourceId: SOURCE_IDS.indexFund,
-      value: saleProceeds,
+      value: netSaleProceeds,
       label: "Sale of home proceeds",
       date: saleDate,
       type: "once",
@@ -175,19 +191,6 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       endDate: null,
       color: "#4c6ef5",
     },
-  ];
-
-  const mortgageBalanceAtSale = Math.round(
-    sourceValueWithMutations(
-      mortgageSource,
-      sources,
-      mutationsBeforePayoff,
-      saleDate,
-    ),
-  );
-
-  const mutations: Mutation[] = [
-    ...mutationsBeforePayoff,
     {
       id: MUTATION_IDS.mortgagePayoff,
       target: "source",
