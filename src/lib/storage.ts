@@ -66,7 +66,7 @@ export interface AppState {
 }
 
 const DEFAULT_APP_STATE: AppState = {
-  currency: "USD",
+  currency: "EUR",
   sources: [],
   mutations: [],
   range: null,
