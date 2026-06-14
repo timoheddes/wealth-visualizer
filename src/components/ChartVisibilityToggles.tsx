@@ -122,7 +122,8 @@ function LinkGroupIndicator({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground flex size-5 shrink-0 cursor-help items-center justify-center rounded transition-colors"
+          className="text-muted-foreground hover:text-foreground flex size-5 shrink-0 cursor-pointer items-center justify-center rounded transition-colors"
+          title="Update linked mutations"
           aria-label={`Linked with ${linkedLabels.join(", ")}`}
         >
           <Link2 className="size-3.5" style={{ color: groupColor }} />
@@ -213,9 +214,7 @@ function VisibilityToggle({
         linkGroup && "border-l-2",
       )}
       style={
-        linkGroup && groupColor
-          ? { borderLeftColor: groupColor }
-          : undefined
+        linkGroup && groupColor ? { borderLeftColor: groupColor } : undefined
       }
     >
       <div className="flex min-w-0 items-center gap-2">
@@ -464,9 +463,7 @@ export function ChartVisibilityToggles({
         mutation={mutation}
         mutations={mutations}
         currency={currency}
-        enabled={
-          !sourceDisabled && enabledMutationIds.has(mutation.id)
-        }
+        enabled={!sourceDisabled && enabledMutationIds.has(mutation.id)}
         disabled={options?.disabled ?? sourceDisabled}
         isLoading={activeToggleKey === `mutation:${mutation.id}`}
         isBusy={isBusy}
@@ -578,7 +575,9 @@ export function ChartVisibilityToggles({
                   Total
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {totalMutations.map((mutation) => renderMutationToggle(mutation))}
+                  {totalMutations.map((mutation) =>
+                    renderMutationToggle(mutation),
+                  )}
                 </div>
               </div>
             )}
