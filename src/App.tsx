@@ -36,7 +36,12 @@ import {
   removeMutationFromLinkGroups,
   type MutationLinkGroup,
 } from "@/lib/mutation-links";
-import { applyTheme, getStoredTheme, setStoredTheme, type Theme } from "@/lib/theme";
+import {
+  applyTheme,
+  getStoredTheme,
+  setStoredTheme,
+  type Theme,
+} from "@/lib/theme";
 import { useEffect, useMemo, useState } from "react";
 
 function createId(): string {
@@ -47,7 +52,9 @@ export default function App() {
   const [initialState] = useState(() => loadAppState());
   const [currency, setCurrency] = useState<Currency>(initialState.currency);
   const [sources, setSources] = useState<Source[]>(initialState.sources);
-  const [mutations, setMutations] = useState<Mutation[]>(initialState.mutations);
+  const [mutations, setMutations] = useState<Mutation[]>(
+    initialState.mutations,
+  );
   const [range, setRange] = useState<TimeRange | null>(initialState.range);
   const [enabledSourceIds, setEnabledSourceIds] = useState<Set<string>>(
     () => new Set(initialState.sources.map((s) => s.id)),
@@ -144,9 +151,7 @@ export default function App() {
 
   useEffect(() => {
     if (!chartBounds) return;
-    setRange((current) =>
-      current ? clampRange(current, chartBounds) : null,
-    );
+    setRange((current) => (current ? clampRange(current, chartBounds) : null));
   }, [chartBounds]);
 
   const chartRange = useMemo(() => {
@@ -167,9 +172,7 @@ export default function App() {
   }
 
   function handleUpdateSource(updated: Source) {
-    setSources((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s)),
-    );
+    setSources((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }
 
   function handleUpdateMutation(updated: Mutation) {
@@ -263,7 +266,7 @@ export default function App() {
   }
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background flex min-h-screen flex-col">
       <header className="border-b">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
           <div>
@@ -297,17 +300,21 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[320px_1fr]">
+      <main className="mx-auto grid flex-1 max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[320px_1fr]">
         <aside className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Add source</CardTitle>
               <CardDescription>
-                Assets and liabilities with initial balance, growth, and an end date.
+                Assets and liabilities with initial balance, growth, and an end
+                date.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SourceForm onAdd={handleAddSource} sourcesCount={sources.length} />
+              <SourceForm
+                onAdd={handleAddSource}
+                sourcesCount={sources.length}
+              />
             </CardContent>
           </Card>
 
@@ -352,8 +359,8 @@ export default function App() {
                         </Badge>
                       </div>
                       <p className="text-muted-foreground text-xs">
-                        {formatCurrency(source.initialValue, currency)} · {source.growth}%
-                        /yr
+                        {formatCurrency(source.initialValue, currency)} ·{" "}
+                        {source.growth}% /yr
                       </p>
                       <p className="text-muted-foreground text-xs">
                         {formatShortDate(source.initialDate)} →{" "}
@@ -388,88 +395,94 @@ export default function App() {
                 <CardDescription>{mutations.length} recorded</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mutationGroups.map(({ key, label, color, mutations: groupMutations }) => (
-                  <div
-                    key={key}
-                    className="overflow-hidden rounded-lg border"
-                  >
-                    <div className="bg-muted/50 flex items-center gap-2 border-b px-3 py-2">
-                      <span
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor:
-                            color ?? "var(--foreground)",
-                        }}
-                        aria-hidden
-                      />
-                      <span className="truncate text-sm font-medium">
-                        {label}
-                      </span>
-                      <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                        {groupMutations.length}{" "}
-                        {groupMutations.length === 1 ? "mutation" : "mutations"}
-                      </span>
-                    </div>
-                    <div className="divide-y">
-                      {groupMutations.map((mutation) => (
-                        <div
-                          key={mutation.id}
-                          className="flex items-start justify-between gap-2 p-3"
-                        >
-                          <div className="min-w-0 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className="size-2.5 shrink-0 rounded-full"
-                                style={{ backgroundColor: mutation.color }}
-                                aria-hidden
-                              />
-                              <span className="truncate font-medium">
-                                {mutation.label}
-                              </span>
-                              <Badge variant="secondary">
-                                {MUTATION_TYPE_LABELS[mutation.type]}
-                              </Badge>
+                {mutationGroups.map(
+                  ({ key, label, color, mutations: groupMutations }) => (
+                    <div
+                      key={key}
+                      className="overflow-hidden rounded-lg border"
+                    >
+                      <div className="bg-muted/50 flex items-center gap-2 border-b px-3 py-2">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor: color ?? "var(--foreground)",
+                          }}
+                          aria-hidden
+                        />
+                        <span className="truncate text-sm font-medium">
+                          {label}
+                        </span>
+                        <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                          {groupMutations.length}{" "}
+                          {groupMutations.length === 1
+                            ? "mutation"
+                            : "mutations"}
+                        </span>
+                      </div>
+                      <div className="divide-y">
+                        {groupMutations.map((mutation) => (
+                          <div
+                            key={mutation.id}
+                            className="flex items-start justify-between gap-2 p-3"
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className="size-2.5 shrink-0 rounded-full"
+                                  style={{ backgroundColor: mutation.color }}
+                                  aria-hidden
+                                />
+                                <span className="truncate font-medium">
+                                  {mutation.label}
+                                </span>
+                                <Badge variant="secondary">
+                                  {MUTATION_TYPE_LABELS[mutation.type]}
+                                </Badge>
+                              </div>
+                              <p className="text-muted-foreground text-xs">
+                                {mutation.type === "recurring"
+                                  ? `Every ${mutation.frequency}d from ${formatShortDate(mutation.date)}`
+                                  : formatShortDate(mutation.date)}
+                                {mutation.type === "recurring" &&
+                                mutation.endDate
+                                  ? ` → ${formatShortDate(mutation.endDate)}`
+                                  : ""}
+                              </p>
+                              <p
+                                className={`text-sm font-medium tabular-nums ${
+                                  mutation.value >= 0
+                                    ? "text-emerald-600"
+                                    : "text-destructive"
+                                }`}
+                              >
+                                {mutation.value >= 0 ? "+" : ""}
+                                {formatCurrency(mutation.value, currency)}
+                              </p>
                             </div>
-                            <p className="text-muted-foreground text-xs">
-                              {mutation.type === "recurring"
-                                ? `Every ${mutation.frequency}d from ${formatShortDate(mutation.date)}`
-                                : formatShortDate(mutation.date)}
-                              {mutation.type === "recurring" && mutation.endDate
-                                ? ` → ${formatShortDate(mutation.endDate)}`
-                                : ""}
-                            </p>
-                            <p
-                              className={`text-sm font-medium tabular-nums ${
-                                mutation.value >= 0
-                                  ? "text-emerald-600"
-                                  : "text-destructive"
-                              }`}
-                            >
-                              {mutation.value >= 0 ? "+" : ""}
-                              {formatCurrency(mutation.value, currency)}
-                            </p>
+                            <div className="flex shrink-0 gap-0.5">
+                              <EditMutationPopover
+                                mutation={mutation}
+                                sources={sources}
+                                onSave={handleUpdateMutation}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() =>
+                                  handleRemoveMutation(mutation.id)
+                                }
+                                aria-label={`Remove ${mutation.label}`}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex shrink-0 gap-0.5">
-                            <EditMutationPopover
-                              mutation={mutation}
-                              sources={sources}
-                              onSave={handleUpdateMutation}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveMutation(mutation.id)}
-                              aria-label={`Remove ${mutation.label}`}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </CardContent>
             </Card>
           )}
@@ -480,7 +493,8 @@ export default function App() {
             <CardHeader>
               <CardTitle>Projection</CardTitle>
               <CardDescription>
-                Each source is a line; dashed line is total. Dots mark mutations.
+                Each source is a line; dashed line is total. Dots mark
+                mutations.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -521,6 +535,21 @@ export default function App() {
           </Card>
         </section>
       </main>
+
+      <footer className="border-t">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+          <p className="text-muted-foreground text-center text-xs">
+            <a
+              href="https://github.com/timoheddes/wealth-visualizer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground hover:underline"
+            >
+              @timoheddes
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
