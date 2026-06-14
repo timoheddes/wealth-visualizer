@@ -118,11 +118,16 @@ export function isLiabilitySource(type: WealthType): boolean {
 }
 
 export const DEFAULT_SOURCE_COLORS = [
-  "#4c6ef5",
-  "#12b886",
-  "#fd7e14",
-  "#be4bdb",
-  "#e03131",
+  "#04151f",
+  "#183a37",
+  "#efd6ac",
+  "#c44900",
+  "#432534",
+  "#7c6a0a",
+  "#babd8d",
+  "#ffdac6",
+  "#fa9500",
+  "#eb6424"
 ] as const;
 
 export function getDefaultSourceColor(index: number): string {
