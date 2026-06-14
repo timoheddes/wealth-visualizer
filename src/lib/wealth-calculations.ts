@@ -445,11 +445,12 @@ import type { Currency } from "@/types/wealth";
 import { CURRENCY_LOCALES } from "@/types/wealth";
 
 export function formatCurrency(value: number, currency: Currency): string {
+  const amount = value === 0 ? 0 : value;
   return new Intl.NumberFormat(CURRENCY_LOCALES[currency], {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(amount);
 }
 
 export function formatDate(date: Date): string {
