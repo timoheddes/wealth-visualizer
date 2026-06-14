@@ -6,6 +6,7 @@ import {
   MutationFormFields,
 } from "@/components/MutationFormFields";
 import type { Mutation, Source } from "@/types/wealth";
+import { TOTAL_MUTATION_APPLIES_TO } from "@/types/wealth";
 
 interface MutationFormProps {
   sources: Source[];
@@ -19,19 +20,17 @@ export function MutationForm({ sources, onAdd }: MutationFormProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim() || !values.sourceId) return;
+    if (!values.label.trim()) return;
+    if (
+      values.appliesTo !== TOTAL_MUTATION_APPLIES_TO &&
+      !values.appliesTo
+    ) {
+      return;
+    }
     if (values.type === "recurring" && Number(values.frequency) <= 0) return;
 
     onAdd(formValuesToMutation(values));
     setValues(createDefaultMutationValues(sources));
-  }
-
-  if (sources.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        Add a wealth source before recording mutations.
-      </p>
-    );
   }
 
   return (

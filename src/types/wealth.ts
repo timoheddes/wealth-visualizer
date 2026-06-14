@@ -28,7 +28,9 @@ export interface Source {
 
 export interface Mutation {
   id: string;
-  sourceId: string;
+  target: MutationTarget;
+  /** Set when target is "source"; null for total mutations */
+  sourceId: string | null;
   value: number;
   label: string;
   /** Start date for recurring mutations; the single occurrence date for one-off */
@@ -40,6 +42,15 @@ export interface Mutation {
   endDate: Date | null;
   color: string;
 }
+
+export type MutationTarget = "source" | "total";
+
+export const MUTATION_TARGET_LABELS: Record<MutationTarget, string> = {
+  source: "Source",
+  total: "Total",
+};
+
+export const TOTAL_MUTATION_APPLIES_TO = "total" as const;
 
 export type MutationType = "once" | "recurring";
 

@@ -93,10 +93,13 @@ export function ChartVisibilityToggles({
 }: ChartVisibilityTogglesProps) {
   if (sources.length === 0 && mutations.length === 0) return null;
 
+  const totalMutations = mutations.filter((m) => m.target === "total");
   const mutationsBySource = sources
     .map((source) => ({
       source,
-      mutations: mutations.filter((m) => m.sourceId === source.id),
+      mutations: mutations.filter(
+        (m) => m.target === "source" && m.sourceId === source.id,
+      ),
     }))
     .filter((group) => group.mutations.length > 0);
 
@@ -133,6 +136,31 @@ export function ChartVisibilityToggles({
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Mutations
           </p>
+
+          {totalMutations.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                <span
+                  className="size-2 shrink-0 rounded-full bg-foreground"
+                  aria-hidden
+                />
+                Total
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {totalMutations.map((mutation) => (
+                  <VisibilityToggle
+                    key={mutation.id}
+                    enabled={enabledMutationIds.has(mutation.id)}
+                    onToggle={() => onToggleMutation(mutation.id)}
+                    label={mutation.label}
+                    color={mutation.color}
+                    description={MUTATION_TYPE_LABELS[mutation.type]}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {mutationsBySource.map(({ source, mutations: groupMutations }) => (
             <div key={source.id} className="space-y-2">
               <p className="text-muted-foreground flex items-center gap-2 text-xs">

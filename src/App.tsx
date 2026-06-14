@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/card";
 import { ChartVisibilityToggles } from "@/components/ChartVisibilityToggles";
 import { CurrencySelect } from "@/components/CurrencySelect";
+import { DataTransferControls } from "@/components/DataTransferControls";
 import { EditMutationPopover } from "@/components/EditMutationPopover";
 import { EditSourcePopover } from "@/components/EditSourcePopover";
 import { MutationForm } from "@/components/MutationForm";
 import { SourceForm } from "@/components/SourceForm";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { TimeRangeSlider } from "@/components/TimeRangeSlider";
 import { WealthChart } from "@/components/WealthChart";
 import {
@@ -24,6 +26,8 @@ import {
 import type { Currency, Mutation, Source, TimeRange } from "@/types/wealth";
 import { MUTATION_TYPE_LABELS, WEALTH_TYPE_LABELS } from "@/types/wealth";
 import { loadAppState, saveAppState } from "@/lib/storage";
+import type { ImportResult } from "@/lib/export-import";
+import { applyTheme, getStoredTheme, setStoredTheme, type Theme } from "@/lib/theme";
 import { useEffect, useMemo, useState } from "react";
 
 function createId(): string {
@@ -42,40 +46,68 @@ export default function App() {
   const [enabledMutationIds, setEnabledMutationIds] = useState<Set<string>>(
     () => new Set(initialState.mutations.map((m) => m.id)),
   );
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
+
+  useEffect(() => {
+    applyTheme(theme);
+    setStoredTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     saveAppState({ currency, sources, mutations, range });
   }, [currency, sources, mutations, range]);
 
-  const mutationsBySource = useMemo((): Array<{
-    source: Source | null;
+  const mutationGroups = useMemo((): Array<{
+    key: string;
+    label: string;
+    color?: string;
     mutations: Mutation[];
   }> => {
-    const bySourceId = new Map<string, Mutation[]>();
-    for (const mutation of mutations) {
-      const group = bySourceId.get(mutation.sourceId) ?? [];
-      group.push(mutation);
-      bySourceId.set(mutation.sourceId, group);
+    const groups: Array<{
+      key: string;
+      label: string;
+      color?: string;
+      mutations: Mutation[];
+    }> = [];
+
+    const totalMutations = mutations.filter((m) => m.target === "total");
+    if (totalMutations.length > 0) {
+      groups.push({
+        key: "total",
+        label: "Total",
+        mutations: totalMutations,
+      });
     }
 
-    const grouped: Array<{ source: Source | null; mutations: Mutation[] }> =
-      sources
-        .filter((source) => bySourceId.has(source.id))
-        .map((source) => ({
-          source,
-          mutations: bySourceId.get(source.id)!,
-        }));
-
-    for (const [sourceId, sourceMutations] of bySourceId) {
-      if (!sources.some((s) => s.id === sourceId)) {
-        grouped.push({
-          source: null,
+    for (const source of sources) {
+      const sourceMutations = mutations.filter(
+        (m) => m.target === "source" && m.sourceId === source.id,
+      );
+      if (sourceMutations.length > 0) {
+        groups.push({
+          key: source.id,
+          label: source.label,
+          color: source.color,
           mutations: sourceMutations,
         });
       }
     }
 
-    return grouped;
+    const orphaned = mutations.filter(
+      (m) =>
+        m.target === "source" &&
+        m.sourceId != null &&
+        !sources.some((s) => s.id === m.sourceId),
+    );
+    if (orphaned.length > 0) {
+      groups.push({
+        key: "unknown",
+        label: "Unknown source",
+        mutations: orphaned,
+      });
+    }
+
+    return groups;
   }, [mutations, sources]);
 
   const visibleSources = useMemo(
@@ -85,10 +117,11 @@ export default function App() {
 
   const visibleMutations = useMemo(
     () =>
-      mutations.filter(
-        (m) =>
-          enabledMutationIds.has(m.id) && enabledSourceIds.has(m.sourceId),
-      ),
+      mutations.filter((m) => {
+        if (!enabledMutationIds.has(m.id)) return false;
+        if (m.target === "total") return true;
+        return m.sourceId != null && enabledSourceIds.has(m.sourceId);
+      }),
     [mutations, enabledMutationIds, enabledSourceIds],
   );
 
@@ -128,7 +161,9 @@ export default function App() {
 
   function handleRemoveSource(id: string) {
     setSources((prev) => prev.filter((s) => s.id !== id));
-    setMutations((prev) => prev.filter((m) => m.sourceId !== id));
+    setMutations((prev) =>
+      prev.filter((m) => m.target !== "source" || m.sourceId !== id),
+    );
     setEnabledSourceIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
@@ -138,7 +173,9 @@ export default function App() {
       const next = new Set(prev);
       for (const mutationId of next) {
         const mutation = mutations.find((m) => m.id === mutationId);
-        if (mutation?.sourceId === id) next.delete(mutationId);
+        if (mutation?.target === "source" && mutation.sourceId === id) {
+          next.delete(mutationId);
+        }
       }
       return next;
     });
@@ -171,6 +208,16 @@ export default function App() {
     });
   }
 
+  function handleImport(data: ImportResult) {
+    setCurrency(data.currency);
+    setSources(data.sources);
+    setMutations(data.mutations);
+    setRange(data.range);
+    setTheme(data.theme);
+    setEnabledSourceIds(data.enabledSourceIds);
+    setEnabledMutationIds(data.enabledMutationIds);
+  }
+
   return (
     <div className="bg-background min-h-screen">
       <header className="border-b">
@@ -184,7 +231,17 @@ export default function App() {
               mutations.
             </p>
           </div>
-          <CurrencySelect value={currency} onChange={setCurrency} />
+          <div className="flex flex-wrap items-center justify-end gap-4">
+            <DataTransferControls
+              appState={{ currency, sources, mutations, range }}
+              theme={theme}
+              enabledSourceIds={enabledSourceIds}
+              enabledMutationIds={enabledMutationIds}
+              onImport={handleImport}
+            />
+            <ThemeToggle theme={theme} onChange={setTheme} />
+            <CurrencySelect value={currency} onChange={setCurrency} />
+          </div>
         </div>
       </header>
 
@@ -206,7 +263,7 @@ export default function App() {
             <CardHeader>
               <CardTitle>Add mutation</CardTitle>
               <CardDescription>
-                One-off contribution or expense applied on a specific date.
+                Applied to a source or the chart total.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -279,21 +336,22 @@ export default function App() {
                 <CardDescription>{mutations.length} recorded</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mutationsBySource.map(({ source, mutations: groupMutations }) => (
+                {mutationGroups.map(({ key, label, color, mutations: groupMutations }) => (
                   <div
-                    key={source?.id ?? "unknown"}
+                    key={key}
                     className="overflow-hidden rounded-lg border"
                   >
                     <div className="bg-muted/50 flex items-center gap-2 border-b px-3 py-2">
                       <span
                         className="size-2.5 shrink-0 rounded-full"
                         style={{
-                          backgroundColor: source?.color ?? "var(--muted-foreground)",
+                          backgroundColor:
+                            color ?? "var(--foreground)",
                         }}
                         aria-hidden
                       />
                       <span className="truncate text-sm font-medium">
-                        {source?.label ?? "Unknown source"}
+                        {label}
                       </span>
                       <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                         {groupMutations.length}{" "}

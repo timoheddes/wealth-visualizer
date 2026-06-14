@@ -13,6 +13,7 @@ import {
   type MutationFormValues,
 } from "@/components/MutationFormFields";
 import type { Mutation, Source } from "@/types/wealth";
+import { TOTAL_MUTATION_APPLIES_TO } from "@/types/wealth";
 
 interface EditMutationPopoverProps {
   mutation: Mutation;
@@ -38,7 +39,13 @@ export function EditMutationPopover({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim() || !values.sourceId) return;
+    if (!values.label.trim()) return;
+    if (
+      values.appliesTo !== TOTAL_MUTATION_APPLIES_TO &&
+      !values.appliesTo
+    ) {
+      return;
+    }
     if (values.type === "recurring" && Number(values.frequency) <= 0) return;
 
     onSave({ ...formValuesToMutation(values), id: mutation.id });

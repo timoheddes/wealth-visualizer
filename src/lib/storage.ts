@@ -1,6 +1,7 @@
 import type {
   Currency,
   Mutation,
+  MutationTarget,
   MutationType,
   Source,
   TimeRange,
@@ -9,7 +10,7 @@ import type {
 import { getDefaultSourceColor } from "@/types/wealth";
 
 const STORAGE_KEY = "wealth-visualizer";
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 
 interface StoredSource {
   id: string;
@@ -24,10 +25,11 @@ interface StoredSource {
 
 interface StoredMutation {
   id: string;
-  sourceId: string;
+  sourceId: string | null;
   value: number;
   label: string;
   date: string;
+  target?: MutationTarget;
   type?: MutationType;
   frequency?: number;
   endDate?: string | null;
@@ -68,6 +70,7 @@ const VALID_WEALTH_TYPES = new Set<WealthType>([
   "property",
 ]);
 const VALID_MUTATION_TYPES = new Set<MutationType>(["once", "recurring"]);
+const VALID_MUTATION_TARGETS = new Set<MutationTarget>(["source", "total"]);
 
 function parseDate(value: string): Date | null {
   const date = new Date(value);
@@ -94,7 +97,7 @@ function isStoredMutation(value: unknown): value is StoredMutation {
   const m = value as StoredMutation;
   return (
     typeof m.id === "string" &&
-    typeof m.sourceId === "string" &&
+    (typeof m.sourceId === "string" || m.sourceId === null) &&
     typeof m.value === "number" &&
     typeof m.label === "string" &&
     typeof m.date === "string"
@@ -115,7 +118,20 @@ function toMutation(
   const date = parseDate(stored.date);
   if (!date) return null;
 
-  const source = sources.find((s) => s.id === stored.sourceId);
+  const target: MutationTarget =
+    stored.target && VALID_MUTATION_TARGETS.has(stored.target)
+      ? stored.target
+      : stored.sourceId === null
+        ? "total"
+        : "source";
+
+  const source =
+    stored.sourceId != null
+      ? sources.find((s) => s.id === stored.sourceId)
+      : undefined;
+
+  if (target === "source" && !source) return null;
+
   const type =
     stored.type && VALID_MUTATION_TYPES.has(stored.type)
       ? stored.type
@@ -127,14 +143,18 @@ function toMutation(
 
   return {
     id: stored.id,
-    sourceId: stored.sourceId,
+    target,
+    sourceId: target === "total" ? null : stored.sourceId,
     value: stored.value,
     label: stored.label,
     date,
     type,
     frequency: stored.frequency ?? 0,
     endDate,
-    color: stored.color ?? source?.color ?? getDefaultSourceColor(0),
+    color:
+      stored.color ??
+      source?.color ??
+      getDefaultSourceColor(0),
   };
 }
 
@@ -162,6 +182,7 @@ function serializeSource(source: Source): StoredSource {
 function serializeMutation(mutation: Mutation): StoredMutation {
   return {
     id: mutation.id,
+    target: mutation.target,
     sourceId: mutation.sourceId,
     value: mutation.value,
     label: mutation.label,
@@ -181,52 +202,60 @@ function serializeTimeRange(range: TimeRange | null): StoredTimeRange | null {
   };
 }
 
-export function loadAppState(): AppState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_APP_STATE;
+export function parseStoredPayload(parsed: unknown): AppState | null {
+  if (!parsed || typeof parsed !== "object") return null;
 
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return DEFAULT_APP_STATE;
-
-    const stored = parsed as Partial<StoredAppState>;
-    if (stored.version !== 1 && stored.version !== STORAGE_VERSION) {
-      return DEFAULT_APP_STATE;
-    }
-
-    const currency = VALID_CURRENCIES.has(stored.currency as Currency)
-      ? (stored.currency as Currency)
-      : DEFAULT_APP_STATE.currency;
-
-    const sources = (stored.sources ?? [])
-      .filter(isStoredSource)
-      .map(toSource)
-      .filter((s): s is Source => s !== null);
-
-    const sourceIds = new Set(sources.map((s) => s.id));
-
-    const mutations = (stored.mutations ?? [])
-      .filter(isStoredMutation)
-      .filter((m) => sourceIds.has(m.sourceId))
-      .map((m) => toMutation(m, sources))
-      .filter((m): m is Mutation => m !== null);
-
-    const range = toTimeRange(stored.range ?? null);
-
-    return { currency, sources, mutations, range };
-  } catch {
-    return DEFAULT_APP_STATE;
+  const stored = parsed as Partial<StoredAppState>;
+  if (
+    stored.version !== 1 &&
+    stored.version !== 2 &&
+    stored.version !== STORAGE_VERSION
+  ) {
+    return null;
   }
+
+  const currency = VALID_CURRENCIES.has(stored.currency as Currency)
+    ? (stored.currency as Currency)
+    : DEFAULT_APP_STATE.currency;
+
+  const sources = (stored.sources ?? [])
+    .filter(isStoredSource)
+    .map(toSource)
+    .filter((s): s is Source => s !== null);
+
+  const mutations = (stored.mutations ?? [])
+    .filter(isStoredMutation)
+    .map((m) => toMutation(m, sources))
+    .filter((m): m is Mutation => m !== null);
+
+  const range = toTimeRange(stored.range ?? null);
+
+  return { currency, sources, mutations, range };
 }
 
-export function saveAppState(state: AppState): void {
-  const stored: StoredAppState = {
+export function toStoredPayload(state: AppState): StoredAppState {
+  return {
     version: STORAGE_VERSION,
     currency: state.currency,
     sources: state.sources.map(serializeSource),
     mutations: state.mutations.map(serializeMutation),
     range: serializeTimeRange(state.range),
   };
+}
+
+export function loadAppState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_APP_STATE;
+
+    return parseStoredPayload(JSON.parse(raw)) ?? DEFAULT_APP_STATE;
+  } catch {
+    return DEFAULT_APP_STATE;
+  }
+}
+
+export function saveAppState(state: AppState): void {
+  const stored = toStoredPayload(state);
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));

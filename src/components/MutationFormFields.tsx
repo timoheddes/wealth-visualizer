@@ -9,10 +9,13 @@ import {
 } from "@/components/ui/select";
 import { parseDateInput, toDateInputValue } from "@/lib/wealth-calculations";
 import type { Mutation, MutationType, Source } from "@/types/wealth";
-import { MUTATION_TYPE_LABELS } from "@/types/wealth";
+import {
+  MUTATION_TYPE_LABELS,
+  TOTAL_MUTATION_APPLIES_TO,
+} from "@/types/wealth";
 
 export interface MutationFormValues {
-  sourceId: string;
+  appliesTo: string;
   label: string;
   value: string;
   date: string;
@@ -27,7 +30,7 @@ export function createDefaultMutationValues(
 ): MutationFormValues {
   const source = sources[0];
   return {
-    sourceId: source?.id ?? "",
+    appliesTo: source?.id ?? TOTAL_MUTATION_APPLIES_TO,
     label: "",
     value: "1000",
     date: toDateInputValue(new Date()),
@@ -40,7 +43,10 @@ export function createDefaultMutationValues(
 
 export function mutationToFormValues(mutation: Mutation): MutationFormValues {
   return {
-    sourceId: mutation.sourceId,
+    appliesTo:
+      mutation.target === "total"
+        ? TOTAL_MUTATION_APPLIES_TO
+        : (mutation.sourceId ?? TOTAL_MUTATION_APPLIES_TO),
     label: mutation.label,
     value: String(mutation.value),
     date: toDateInputValue(mutation.date),
@@ -54,8 +60,11 @@ export function mutationToFormValues(mutation: Mutation): MutationFormValues {
 export function formValuesToMutation(
   values: MutationFormValues,
 ): Omit<Mutation, "id"> {
+  const isTotal = values.appliesTo === TOTAL_MUTATION_APPLIES_TO;
+
   return {
-    sourceId: values.sourceId,
+    target: isTotal ? "total" : "source",
+    sourceId: isTotal ? null : values.appliesTo,
     label: values.label.trim(),
     value: Number(values.value),
     date: parseDateInput(values.date),
@@ -91,21 +100,26 @@ export function MutationFormFields({
   return (
     <>
       <div className="grid gap-2">
-        <Label htmlFor={fieldId("source")}>Source</Label>
+        <Label htmlFor={fieldId("appliesTo")}>Applies to</Label>
         <Select
-          value={values.sourceId}
-          onValueChange={(sourceId) => {
-            const source = sources.find((s) => s.id === sourceId);
+          value={values.appliesTo}
+          onValueChange={(appliesTo) => {
+            if (appliesTo === TOTAL_MUTATION_APPLIES_TO) {
+              update({ appliesTo });
+              return;
+            }
+            const source = sources.find((s) => s.id === appliesTo);
             update({
-              sourceId,
+              appliesTo,
               color: source?.color ?? values.color,
             });
           }}
         >
-          <SelectTrigger id={fieldId("source")}>
-            <SelectValue placeholder="Select source" />
+          <SelectTrigger id={fieldId("appliesTo")}>
+            <SelectValue placeholder="Select target" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={TOTAL_MUTATION_APPLIES_TO}>Total</SelectItem>
             {sources.map((source) => (
               <SelectItem key={source.id} value={source.id}>
                 {source.label}
@@ -183,7 +197,6 @@ export function MutationFormFields({
             id={fieldId("date")}
             type="date"
             value={values.date}
-            style={{ fontSize: "0.7em" }}
             onChange={(e) => update({ date: e.target.value })}
             required
           />

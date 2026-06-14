@@ -32,25 +32,138 @@ export function sourceValueAt(source: Source, date: Date): number {
   return source.initialValue * growthMultiplier(source.growth, days);
 }
 
-/** Count how many times a mutation has occurred on or before a date. */
-export function mutationOccurrencesUpTo(mutation: Mutation, date: Date): number {
-  if (isBefore(date, mutation.date)) return 0;
+/** All occurrence dates for a mutation on or before the given date. */
+function mutationOccurrenceDatesUpTo(mutation: Mutation, date: Date): Date[] {
+  if (isBefore(date, mutation.date)) return [];
 
-  if (mutation.type === "once") return 1;
+  if (mutation.type === "once") return [mutation.date];
 
-  if (mutation.frequency <= 0) return 0;
+  if (mutation.frequency <= 0) return [];
 
   const effectiveEnd = mutation.endDate
     ? min([mutation.endDate, date])
     : date;
 
-  let count = 0;
+  const dates: Date[] = [];
   let current = mutation.date;
   while (!isAfter(current, effectiveEnd)) {
-    count++;
+    dates.push(current);
     current = addDays(current, mutation.frequency);
   }
-  return count;
+  return dates;
+}
+
+/** Value of a mutation amount compounded from its occurrence date. */
+function compoundedMutationValue(
+  amount: number,
+  occurrenceDate: Date,
+  source: Source,
+  date: Date,
+): number {
+  if (isBefore(date, occurrenceDate)) return 0;
+
+  const growthEnd = min([date, source.endDate]);
+  const days = differenceInCalendarDays(growthEnd, occurrenceDate);
+  if (days < 0) return 0;
+
+  return amount * growthMultiplier(source.growth, days);
+}
+
+/** Source value from base growth and source-targeted mutations only. */
+function sourceValueWithSourceMutations(
+  source: Source,
+  mutations: Mutation[],
+  date: Date,
+): number {
+  const base = sourceValueAt(source, date);
+
+  const mutationTotal = mutations
+    .filter((m) => m.target === "source" && m.sourceId === source.id)
+    .reduce((sum, mutation) => {
+      const occurrences = mutationOccurrenceDatesUpTo(mutation, date);
+      return (
+        sum +
+        occurrences.reduce(
+          (occSum, occurrenceDate) =>
+            occSum +
+            compoundedMutationValue(
+              mutation.value,
+              occurrenceDate,
+              source,
+              date,
+            ),
+          0,
+        )
+      );
+    }, 0);
+
+  return base + mutationTotal;
+}
+
+function portfolioWeightAt(
+  source: Source,
+  sources: Source[],
+  sourceMutations: Mutation[],
+  date: Date,
+): number {
+  const weights = sources.map((s) =>
+    Math.max(0, sourceValueWithSourceMutations(s, sourceMutations, date)),
+  );
+  const portfolio = weights.reduce((sum, weight) => sum + weight, 0);
+
+  if (portfolio <= 0) return 1 / sources.length;
+
+  const sourceIndex = sources.findIndex((s) => s.id === source.id);
+  return weights[sourceIndex] / portfolio;
+}
+
+/** Allocate total-targeted mutations across sources by portfolio share. */
+function allocatedTotalMutationsValue(
+  source: Source,
+  sources: Source[],
+  mutations: Mutation[],
+  date: Date,
+): number {
+  const sourceMutations = mutations.filter((m) => m.target === "source");
+  const totalMutations = mutations.filter((m) => m.target === "total");
+
+  return totalMutations.reduce((sum, mutation) => {
+    const occurrences = mutationOccurrenceDatesUpTo(mutation, date);
+    return (
+      sum +
+      occurrences.reduce((occSum, occurrenceDate) => {
+        const share = portfolioWeightAt(
+          source,
+          sources,
+          sourceMutations,
+          occurrenceDate,
+        );
+        return (
+          occSum +
+          compoundedMutationValue(
+            mutation.value * share,
+            occurrenceDate,
+            source,
+            date,
+          )
+        );
+      }, 0)
+    );
+  }, 0);
+}
+
+/** Source value including source and allocated total-targeted mutations. */
+export function sourceValueWithMutations(
+  source: Source,
+  sources: Source[],
+  mutations: Mutation[],
+  date: Date,
+): number {
+  const sourceMutations = mutations.filter((m) => m.target === "source");
+  return (
+    sourceValueWithSourceMutations(source, sourceMutations, date) +
+    allocatedTotalMutationsValue(source, sources, mutations, date)
+  );
 }
 
 /** All occurrence dates for a mutation within an inclusive date window. */
@@ -58,47 +171,24 @@ export function expandMutationOccurrences(
   mutation: Mutation,
   window: TimeRange,
 ): Date[] {
-  if (mutation.type === "once") {
-    if (
-      !isBefore(mutation.date, window.start) &&
-      !isAfter(mutation.date, window.end)
-    ) {
-      return [mutation.date];
-    }
-    return [];
-  }
-
-  if (mutation.frequency <= 0) return [];
-
-  const absoluteEnd = mutation.endDate ?? window.end;
-  const effectiveEnd = min([absoluteEnd, window.end]);
-  const dates: Date[] = [];
-  let current = mutation.date;
-
-  while (!isAfter(current, effectiveEnd)) {
-    if (!isBefore(current, window.start)) {
-      dates.push(current);
-    }
-    current = addDays(current, mutation.frequency);
-  }
-
-  return dates;
+  return mutationOccurrenceDatesUpTo(mutation, window.end).filter(
+    (occurrenceDate) =>
+      !isBefore(occurrenceDate, window.start) &&
+      !isAfter(occurrenceDate, window.end),
+  );
 }
 
-/** Source value including applied mutations up to the given date. */
-export function sourceValueWithMutations(
-  source: Source,
+/** Combined total across all sources (equals sum of source lines). */
+export function totalValueWithMutations(
+  sources: Source[],
   mutations: Mutation[],
   date: Date,
 ): number {
-  const base = sourceValueAt(source, date);
-  const mutationSum = mutations
-    .filter((m) => m.sourceId === source.id)
-    .reduce(
-      (sum, m) => sum + m.value * mutationOccurrencesUpTo(m, date),
-      0,
-    );
-  return base + mutationSum;
+  return sources.reduce(
+    (sum, source) =>
+      sum + sourceValueWithMutations(source, sources, mutations, date),
+    0,
+  );
 }
 
 export function getDataBounds(sources: Source[]): TimeRange | null {
@@ -126,13 +216,18 @@ export function buildChartData(
       timestamp: toTimestamp(pointDate),
     };
 
-    let total = 0;
+    let sourcesTotal = 0;
     for (const source of sources) {
-      const value = sourceValueWithMutations(source, mutations, pointDate);
+      const value = sourceValueWithMutations(
+        source,
+        sources,
+        mutations,
+        pointDate,
+      );
       point[source.id] = value;
-      total += value;
+      sourcesTotal += value;
     }
-    point.total = total;
+    point.total = sourcesTotal;
 
     return point;
   });
@@ -141,7 +236,7 @@ export function buildChartData(
 export interface MutationMarker {
   id: string;
   mutation: Mutation;
-  source: Source;
+  source: Source | null;
   date: Date;
   timestamp: number;
   y: number;
@@ -156,18 +251,33 @@ export function getMutationMarkers(
   const markers: MutationMarker[] = [];
 
   for (const mutation of mutations) {
-    const source = sources.find((s) => s.id === mutation.sourceId);
-    if (!source) continue;
+    if (mutation.target === "source") {
+      const source = sources.find((s) => s.id === mutation.sourceId);
+      if (!source) continue;
+
+      const occurrences = expandMutationOccurrences(mutation, range);
+      for (const date of occurrences) {
+        markers.push({
+          id: `${mutation.id}-${date.getTime()}`,
+          mutation,
+          source,
+          date,
+          timestamp: date.getTime(),
+          y: sourceValueWithMutations(source, sources, mutations, date),
+        });
+      }
+      continue;
+    }
 
     const occurrences = expandMutationOccurrences(mutation, range);
     for (const date of occurrences) {
       markers.push({
         id: `${mutation.id}-${date.getTime()}`,
         mutation,
-        source,
+        source: null,
         date,
         timestamp: date.getTime(),
-        y: sourceValueWithMutations(source, mutations, date),
+        y: totalValueWithMutations(sources, mutations, date),
       });
     }
   }
