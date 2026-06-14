@@ -1,6 +1,8 @@
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import type { AppState } from "@/lib/storage";
 import {
   createExportBundle,
@@ -30,6 +32,7 @@ export function DataTransferControls({
 }: DataTransferControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const { isPending: isImporting, run: runImport } = useDeferredAction();
 
   function handleExport() {
     const bundle = createExportBundle({
@@ -59,7 +62,7 @@ export function DataTransferControls({
     );
     if (!confirmed) return;
 
-    onImport(result);
+    runImport(() => onImport(result));
   }
 
   return (
@@ -68,15 +71,18 @@ export function DataTransferControls({
         <Download className="size-4" />
         Export
       </Button>
-      <Button
+      <LoadingButton
         type="button"
         variant="outline"
         size="sm"
+        isLoading={isImporting}
+        loadingLabel="Importing..."
+        disabled={isImporting}
         onClick={() => fileInputRef.current?.click()}
       >
         <Upload className="size-4" />
         Import
-      </Button>
+      </LoadingButton>
       <input
         ref={fileInputRef}
         type="file"

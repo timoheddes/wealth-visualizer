@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import {
   createDefaultMutationValues,
   formValuesToMutation,
@@ -14,13 +15,14 @@ interface MutationFormProps {
 }
 
 export function MutationForm({ sources, onAdd }: MutationFormProps) {
+  const { isPending, run } = useDeferredAction();
   const [values, setValues] = useState(() =>
     createDefaultMutationValues(sources),
   );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim()) return;
+    if (!values.label.trim() || isPending) return;
     if (
       values.appliesTo !== TOTAL_MUTATION_APPLIES_TO &&
       !values.appliesTo
@@ -29,8 +31,10 @@ export function MutationForm({ sources, onAdd }: MutationFormProps) {
     }
     if (values.type === "recurring" && Number(values.frequency) <= 0) return;
 
-    onAdd(formValuesToMutation(values));
-    setValues(createDefaultMutationValues(sources));
+    run(() => {
+      onAdd(formValuesToMutation(values));
+      setValues(createDefaultMutationValues(sources));
+    });
   }
 
   return (
@@ -41,9 +45,14 @@ export function MutationForm({ sources, onAdd }: MutationFormProps) {
         sources={sources}
         idPrefix="mutation"
       />
-      <Button type="submit" className="w-full">
+      <LoadingButton
+        type="submit"
+        className="w-full"
+        isLoading={isPending}
+        loadingLabel="Adding mutation..."
+      >
         Add mutation
-      </Button>
+      </LoadingButton>
     </form>
   );
 }

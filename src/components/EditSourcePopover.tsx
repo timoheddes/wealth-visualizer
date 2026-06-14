@@ -1,6 +1,8 @@
 import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,6 +49,7 @@ interface EditSourcePopoverProps {
 }
 
 export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
+  const { isPending, run } = useDeferredAction();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<SourceFormValues>(() =>
     sourceToValues(source),
@@ -60,25 +63,32 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim()) return;
+    if (!values.label.trim() || isPending) return;
 
-    onSave({
-      ...source,
-      type: values.type,
-      label: values.label.trim(),
-      color: values.color,
-      initialValue: Number(values.initialValue),
-      initialDate: parseDateInput(values.initialDate),
-      endDate: parseDateInput(values.endDate),
-      growth: Number(values.growth),
+    run(() => {
+      onSave({
+        ...source,
+        type: values.type,
+        label: values.label.trim(),
+        color: values.color,
+        initialValue: Number(values.initialValue),
+        initialDate: parseDateInput(values.initialDate),
+        endDate: parseDateInput(values.endDate),
+        growth: Number(values.growth),
+      });
+      setOpen(false);
     });
-    setOpen(false);
   }
 
   const fieldId = (field: string) => `edit-source-${field}-${source.id}`;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!isPending) setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -212,9 +222,14 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
+          <LoadingButton
+            type="submit"
+            className="w-full"
+            isLoading={isPending}
+            loadingLabel="Saving changes..."
+          >
             Save changes
-          </Button>
+          </LoadingButton>
         </form>
       </PopoverContent>
     </Popover>

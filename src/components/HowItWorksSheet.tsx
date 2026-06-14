@@ -119,35 +119,35 @@ export function HowItWorksSheet() {
             </p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                <strong className="text-foreground">Trading212</strong> — €400k
-                investment at 12% growth
+                <strong className="text-foreground">Index fund</strong> — €25,000
+                investment at 7% growth
               </li>
               <li>
                 <strong className="text-foreground">Income</strong> — €0 cash
                 account at 0% growth, receiving salary and paying expenses
               </li>
               <li>
-                <strong className="text-foreground">Amsterdam apartment</strong>{" "}
-                — €950k property at 4% growth, ending when sold
+                <strong className="text-foreground">Home</strong> — €300,000
+                property at 3% growth, ending when sold
               </li>
             </ul>
             <p>Then add mutations to connect them:</p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                Recurring <strong className="text-foreground">+€10k salary</strong>{" "}
-                and <strong className="text-foreground">−€2k living expenses</strong>{" "}
+                Recurring <strong className="text-foreground">+€3,000 salary</strong>{" "}
+                and <strong className="text-foreground">−€1,500 living expenses</strong>{" "}
                 on Income
               </li>
               <li>
-                Recurring <strong className="text-foreground">−€2.5k</strong> from
-                Income and <strong className="text-foreground">+€2.5k</strong> to
-                Trading212 — a monthly transfer pair
+                Recurring <strong className="text-foreground">−€500</strong> from
+                Income and <strong className="text-foreground">+€500</strong> to
+                Index fund — a monthly savings transfer pair
               </li>
               <li>
-                One-off <strong className="text-foreground">sell apartment</strong>{" "}
-                (−€950k), <strong className="text-foreground">apartment profit</strong>{" "}
-                (+€1.05M to Trading212), and{" "}
-                <strong className="text-foreground">mortgage payoff</strong> (−€200k
+                One-off <strong className="text-foreground">sell home</strong>{" "}
+                (−€300,000), <strong className="text-foreground">sale profit</strong>{" "}
+                (+€50,000 to Index fund), and{" "}
+                <strong className="text-foreground">mortgage payoff</strong> (−€180,000
                 on Total) — all on the same date
               </li>
             </ul>
@@ -184,7 +184,7 @@ export function HowItWorksSheet() {
             <p>
               Under <strong className="text-foreground">Chart visibility</strong>,
               toggle sources and mutations on or off without deleting them. This
-              lets you ask &ldquo;what if I didn&apos;t sell the apartment?&rdquo;
+              lets you ask &ldquo;what if I didn&apos;t sell the home?&rdquo;
               or hide a recurring expense to compare outcomes.
             </p>
             <p>

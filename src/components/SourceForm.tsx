@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,24 +48,27 @@ interface SourceFormProps {
 }
 
 export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
+  const { isPending, run } = useDeferredAction();
   const [values, setValues] = useState<SourceFormValues>(() =>
     defaultValues(getDefaultSourceColor(sourcesCount)),
   );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim()) return;
+    if (!values.label.trim() || isPending) return;
 
-    onAdd({
-      type: values.type,
-      label: values.label.trim(),
-      color: values.color,
-      initialValue: Number(values.initialValue),
-      initialDate: parseDateInput(values.initialDate),
-      endDate: parseDateInput(values.endDate),
-      growth: Number(values.growth),
+    run(() => {
+      onAdd({
+        type: values.type,
+        label: values.label.trim(),
+        color: values.color,
+        initialValue: Number(values.initialValue),
+        initialDate: parseDateInput(values.initialDate),
+        endDate: parseDateInput(values.endDate),
+        growth: Number(values.growth),
+      });
+      setValues(defaultValues(getDefaultSourceColor(sourcesCount + 1)));
     });
-    setValues(defaultValues(getDefaultSourceColor(sourcesCount + 1)));
   }
 
   return (
@@ -184,9 +188,14 @@ export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
         </div>
       </div>
 
-      <Button type="submit" className="w-full">
+      <LoadingButton
+        type="submit"
+        className="w-full"
+        isLoading={isPending}
+        loadingLabel="Adding source..."
+      >
         Add source
-      </Button>
+      </LoadingButton>
     </form>
   );
 }

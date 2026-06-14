@@ -1,6 +1,8 @@
 import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import {
   Popover,
   PopoverContent,
@@ -26,6 +28,7 @@ export function EditMutationPopover({
   sources,
   onSave,
 }: EditMutationPopoverProps) {
+  const { isPending, run } = useDeferredAction();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<MutationFormValues>(() =>
     mutationToFormValues(mutation),
@@ -39,7 +42,7 @@ export function EditMutationPopover({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.label.trim()) return;
+    if (!values.label.trim() || isPending) return;
     if (
       values.appliesTo !== TOTAL_MUTATION_APPLIES_TO &&
       !values.appliesTo
@@ -48,12 +51,19 @@ export function EditMutationPopover({
     }
     if (values.type === "recurring" && Number(values.frequency) <= 0) return;
 
-    onSave({ ...formValuesToMutation(values), id: mutation.id });
-    setOpen(false);
+    run(() => {
+      onSave({ ...formValuesToMutation(values), id: mutation.id });
+      setOpen(false);
+    });
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!isPending) setOpen(next);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -78,9 +88,14 @@ export function EditMutationPopover({
             idPrefix={`edit-mutation-${mutation.id}`}
           />
 
-          <Button type="submit" className="w-full">
+          <LoadingButton
+            type="submit"
+            className="w-full"
+            isLoading={isPending}
+            loadingLabel="Saving changes..."
+          >
             Save changes
-          </Button>
+          </LoadingButton>
         </form>
       </PopoverContent>
     </Popover>

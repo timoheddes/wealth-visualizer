@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
-import { Link2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/LoadingButton";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import {
   Popover,
   PopoverContent,
@@ -170,6 +172,8 @@ function VisibilityToggle({
   currency,
   description,
   disabled = false,
+  isLoading = false,
+  isBusy = false,
   linkMode = false,
   selected = false,
   onSelectChange,
@@ -188,6 +192,8 @@ function VisibilityToggle({
   currency: Currency;
   description?: string;
   disabled?: boolean;
+  isLoading?: boolean;
+  isBusy?: boolean;
   linkMode?: boolean;
   selected?: boolean;
   onSelectChange?: (selected: boolean) => void;
@@ -196,11 +202,14 @@ function VisibilityToggle({
   groupColor?: string;
   onRemoveLink?: (groupId: string) => void;
 }) {
+  const switchDisabled = disabled || isBusy;
+
   return (
     <div
       className={cn(
         "flex items-center justify-between gap-3 rounded-md border px-3 py-2",
         disabled && "opacity-50",
+        isLoading && "opacity-80",
         linkGroup && "border-l-2",
       )}
       style={
@@ -214,7 +223,7 @@ function VisibilityToggle({
           <input
             type="checkbox"
             checked={selected}
-            disabled={disabled}
+            disabled={disabled || isBusy}
             onChange={(e) => onSelectChange(e.target.checked)}
             className="size-4 shrink-0 rounded border"
             aria-label={`Select ${label} for linking`}
@@ -266,20 +275,37 @@ function VisibilityToggle({
         type="button"
         role="switch"
         aria-checked={enabled}
-        aria-label={`${enabled ? "Hide" : "Show"} ${label}`}
-        disabled={disabled}
+        aria-busy={isLoading}
+        aria-label={
+          isLoading
+            ? `Updating ${label} visibility`
+            : `${enabled ? "Hide" : "Show"} ${label}`
+        }
+        disabled={switchDisabled}
         onClick={onToggle}
         className={cn(
           "relative h-5 w-9 shrink-0 rounded-full transition-colors",
           enabled ? "bg-primary" : "bg-muted",
+          isLoading && "cursor-wait",
         )}
       >
-        <span
-          className={cn(
-            "absolute top-0.5 left-0.5 size-4 rounded-full bg-background shadow-sm transition-transform",
-            enabled && "translate-x-4",
-          )}
-        />
+        {isLoading ? (
+          <span className="flex size-full items-center justify-center">
+            <Loader2
+              className={cn(
+                "size-3 animate-spin",
+                enabled ? "text-primary-foreground" : "text-muted-foreground",
+              )}
+            />
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "absolute top-0.5 left-0.5 size-4 rounded-full bg-background shadow-sm transition-transform",
+              enabled && "translate-x-4",
+            )}
+          />
+        )}
       </button>
     </div>
   );
@@ -291,6 +317,8 @@ function MutationVisibilityToggle({
   currency,
   enabled,
   disabled,
+  isLoading,
+  isBusy,
   linkMode,
   selected,
   onSelectChange,
@@ -303,6 +331,8 @@ function MutationVisibilityToggle({
   currency: Currency;
   enabled: boolean;
   disabled?: boolean;
+  isLoading?: boolean;
+  isBusy?: boolean;
   linkMode: boolean;
   selected: boolean;
   onSelectChange: (selected: boolean) => void;
@@ -332,6 +362,8 @@ function MutationVisibilityToggle({
       currency={currency}
       description={mutationDescription(mutation)}
       disabled={disabled}
+      isLoading={isLoading}
+      isBusy={isBusy}
       linkMode={linkMode}
       selected={selected}
       onSelectChange={onSelectChange}
@@ -355,10 +387,21 @@ export function ChartVisibilityToggles({
   onCreateMutationLink,
   onRemoveMutationLink,
 }: ChartVisibilityTogglesProps) {
+  const { isPending: isLinking, run: runLinkAction } = useDeferredAction();
+  const { isPending: isToggling, run: runToggleAction } = useDeferredAction();
+  const [activeToggleKey, setActiveToggleKey] = useState<string | null>(null);
   const [linkMode, setLinkMode] = useState(false);
   const [selectedMutationIds, setSelectedMutationIds] = useState<Set<string>>(
     () => new Set(),
   );
+
+  useEffect(() => {
+    if (!isToggling) {
+      setActiveToggleKey(null);
+    }
+  }, [isToggling]);
+
+  const isBusy = isToggling || isLinking;
 
   if (sources.length === 0 && mutations.length === 0) return null;
 
@@ -387,9 +430,23 @@ export function ChartVisibilityToggles({
   }
 
   function handleCreateLink() {
-    if (selectedMutationIds.size < 2) return;
-    onCreateMutationLink([...selectedMutationIds]);
-    exitLinkMode();
+    if (selectedMutationIds.size < 2 || isLinking) return;
+    runLinkAction(() => {
+      onCreateMutationLink([...selectedMutationIds]);
+      exitLinkMode();
+    });
+  }
+
+  function handleToggleSource(id: string) {
+    if (isBusy) return;
+    setActiveToggleKey(`source:${id}`);
+    runToggleAction(() => onToggleSource(id));
+  }
+
+  function handleToggleMutation(id: string) {
+    if (isBusy) return;
+    setActiveToggleKey(`mutation:${id}`);
+    runToggleAction(() => onToggleMutation(id));
   }
 
   function renderMutationToggle(
@@ -411,13 +468,15 @@ export function ChartVisibilityToggles({
           !sourceDisabled && enabledMutationIds.has(mutation.id)
         }
         disabled={options?.disabled ?? sourceDisabled}
+        isLoading={activeToggleKey === `mutation:${mutation.id}`}
+        isBusy={isBusy}
         linkMode={linkMode}
         selected={selectedMutationIds.has(mutation.id)}
         onSelectChange={(selected) =>
           toggleMutationSelection(mutation.id, selected)
         }
         mutationLinkGroups={mutationLinkGroups}
-        onToggle={() => onToggleMutation(mutation.id)}
+        onToggle={() => handleToggleMutation(mutation.id)}
         onRemoveMutationLink={onRemoveMutationLink}
       />
     );
@@ -437,18 +496,21 @@ export function ChartVisibilityToggles({
             <div className="flex flex-wrap items-center gap-2">
               {linkMode ? (
                 <>
-                  <Button
+                  <LoadingButton
                     type="button"
                     size="sm"
                     disabled={selectedMutationIds.size < 2}
+                    isLoading={isLinking}
+                    loadingLabel="Linking..."
                     onClick={handleCreateLink}
                   >
                     Link selected ({selectedMutationIds.size})
-                  </Button>
+                  </LoadingButton>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    disabled={isLinking}
                     onClick={exitLinkMode}
                   >
                     Cancel
@@ -459,6 +521,7 @@ export function ChartVisibilityToggles({
                   type="button"
                   size="sm"
                   variant="outline"
+                  disabled={isBusy}
                   onClick={() => setLinkMode(true)}
                 >
                   <Link2 className="size-4" />
@@ -486,11 +549,13 @@ export function ChartVisibilityToggles({
                 <VisibilityToggle
                   key={source.id}
                   enabled={enabledSourceIds.has(source.id)}
-                  onToggle={() => onToggleSource(source.id)}
+                  onToggle={() => handleToggleSource(source.id)}
                   label={source.label}
                   color={source.color}
                   growth={source.growth}
                   currency={currency}
+                  isLoading={activeToggleKey === `source:${source.id}`}
+                  isBusy={isBusy}
                 />
               ))}
             </div>
