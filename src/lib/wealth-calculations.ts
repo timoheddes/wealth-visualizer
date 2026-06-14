@@ -325,7 +325,7 @@ export function buildChartData(
   });
 
   return months.map((month) => {
-    const pointDate = endOfMonth(month);
+    const pointDate = min([endOfMonth(month), range.end]);
     const point: ChartPoint = {
       date: pointDate,
       timestamp: toTimestamp(pointDate),

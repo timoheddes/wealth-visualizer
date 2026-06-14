@@ -1,5 +1,8 @@
 import type { ImportResult } from "@/lib/export-import";
-import { sourceValueAt } from "@/lib/wealth-calculations";
+import {
+  sourceValueAt,
+  sourceValueWithMutations,
+} from "@/lib/wealth-calculations";
 import type { MutationLinkGroup } from "@/lib/mutation-links";
 import type { Theme } from "@/lib/theme";
 import type { Mutation, Source } from "@/types/wealth";
@@ -8,6 +11,7 @@ const SOURCE_IDS = {
   indexFund: "example-0001-4000-8000-000000000001",
   income: "example-0001-4000-8000-000000000002",
   home: "example-0001-4000-8000-000000000003",
+  mortgage: "example-0001-4000-8000-000000000004",
 } as const;
 
 const MUTATION_IDS = {
@@ -15,9 +19,10 @@ const MUTATION_IDS = {
   livingExpenses: "example-0002-4000-8000-000000000002",
   savingsOut: "example-0002-4000-8000-000000000003",
   savingsIn: "example-0002-4000-8000-000000000004",
-  sellHome: "example-0002-4000-8000-000000000005",
-  saleProfit: "example-0002-4000-8000-000000000006",
-  mortgagePayoff: "example-0002-4000-8000-000000000007",
+  mortgagePayment: "example-0002-4000-8000-000000000005",
+  sellHome: "example-0002-4000-8000-000000000006",
+  saleProfit: "example-0002-4000-8000-000000000007",
+  mortgagePayoff: "example-0002-4000-8000-000000000008",
 } as const;
 
 const LINK_GROUP_IDS = {
@@ -41,15 +46,26 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
     color: "#fd7e14",
     initialValue: 300_000,
     initialDate: planStart,
-    endDate: saleDate,
+    endDate: planEnd,
     growth: 3,
+  };
+
+  const mortgageSource: Source = {
+    id: SOURCE_IDS.mortgage,
+    type: "debt",
+    label: "Mortgage",
+    color: "#be4bdb",
+    initialValue: 180_000,
+    initialDate: planStart,
+    endDate: planEnd,
+    growth: 2.5,
   };
 
   const sources: Source[] = [
     {
       id: SOURCE_IDS.indexFund,
       type: "investment",
-      label: "Index fund",
+      label: "Investments",
       color: "#4c6ef5",
       initialValue: 25_000,
       initialDate: planStart,
@@ -67,13 +83,14 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       growth: 0,
     },
     homeSource,
+    mortgageSource,
   ];
 
   // Sale price at the sale date (grown property value). The sell mutation
   // removes the home line; sale proceeds deposit that cash into investments.
   const saleProceeds = Math.round(sourceValueAt(homeSource, saleDate));
 
-  const mutations: Mutation[] = [
+  const mutationsBeforePayoff: Mutation[] = [
     {
       id: MUTATION_IDS.salary,
       target: "source",
@@ -103,7 +120,7 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       target: "source",
       sourceId: SOURCE_IDS.income,
       value: -500,
-      label: "Monthly savings",
+      label: "Monthly investments",
       date: planStart,
       type: "recurring",
       frequency: 30,
@@ -115,12 +132,24 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       target: "source",
       sourceId: SOURCE_IDS.indexFund,
       value: 500,
-      label: "Monthly savings",
+      label: "Monthly investments",
       date: planStart,
       type: "recurring",
       frequency: 30,
       endDate: null,
       color: "#4c6ef5",
+    },
+    {
+      id: MUTATION_IDS.mortgagePayment,
+      target: "source",
+      sourceId: SOURCE_IDS.mortgage,
+      value: -900,
+      label: "Mortgage payment",
+      date: planStart,
+      type: "recurring",
+      frequency: 30,
+      endDate: null,
+      color: "#be4bdb",
     },
     {
       id: MUTATION_IDS.sellHome,
@@ -139,24 +168,37 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       target: "source",
       sourceId: SOURCE_IDS.indexFund,
       value: saleProceeds,
-      label: "Sale proceeds",
+      label: "Sale of home proceeds",
       date: saleDate,
       type: "once",
       frequency: 0,
       endDate: null,
       color: "#4c6ef5",
     },
+  ];
+
+  const mortgageBalanceAtSale = Math.round(
+    sourceValueWithMutations(
+      mortgageSource,
+      sources,
+      mutationsBeforePayoff,
+      saleDate,
+    ),
+  );
+
+  const mutations: Mutation[] = [
+    ...mutationsBeforePayoff,
     {
       id: MUTATION_IDS.mortgagePayoff,
-      target: "total",
-      sourceId: null,
-      value: -180_000,
+      target: "source",
+      sourceId: SOURCE_IDS.mortgage,
+      value: -mortgageBalanceAtSale,
       label: "Mortgage payoff",
       date: saleDate,
       type: "once",
       frequency: 0,
       endDate: null,
-      color: "#4c6ef5",
+      color: "#be4bdb",
     },
   ];
 
@@ -175,6 +217,12 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
     },
   ];
 
+  const homeSaleMutationIds: Set<string> = new Set([
+    MUTATION_IDS.sellHome,
+    MUTATION_IDS.saleProfit,
+    MUTATION_IDS.mortgagePayoff,
+  ]);
+
   return {
     currency: "EUR",
     sources,
@@ -182,7 +230,9 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
     range: { start: planStart, end: planEnd },
     theme,
     enabledSourceIds: new Set(Object.values(SOURCE_IDS)),
-    enabledMutationIds: new Set(Object.values(MUTATION_IDS)),
+    enabledMutationIds: new Set(
+      Object.values(MUTATION_IDS).filter((id) => !homeSaleMutationIds.has(id)),
+    ),
     mutationLinkGroups,
   };
 }

@@ -12,7 +12,7 @@ import type {
 import { getDefaultSourceColor } from "@/types/wealth";
 
 const STORAGE_KEY = "wealth-visualizer";
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 5;
 
 interface StoredSource {
   id: string;
@@ -55,6 +55,8 @@ interface StoredAppState {
   mutations: StoredMutation[];
   range: StoredTimeRange | null;
   mutationLinkGroups?: StoredMutationLinkGroup[];
+  enabledSourceIds?: string[];
+  enabledMutationIds?: string[];
 }
 
 export interface AppState {
@@ -63,6 +65,8 @@ export interface AppState {
   mutations: Mutation[];
   range: TimeRange | null;
   mutationLinkGroups: MutationLinkGroup[];
+  enabledSourceIds: string[];
+  enabledMutationIds: string[];
 }
 
 const DEFAULT_APP_STATE: AppState = {
@@ -71,6 +75,8 @@ const DEFAULT_APP_STATE: AppState = {
   mutations: [],
   range: null,
   mutationLinkGroups: [],
+  enabledSourceIds: [],
+  enabledMutationIds: [],
 };
 
 const VALID_CURRENCIES = new Set<Currency>(["USD", "EUR", "GBP"]);
@@ -215,6 +221,20 @@ function serializeTimeRange(range: TimeRange | null): StoredTimeRange | null {
   };
 }
 
+export function sanitizeEnabledIds(
+  ids: unknown,
+  validIds: Set<string>,
+  defaultToAll: boolean,
+): string[] {
+  if (!Array.isArray(ids)) {
+    return defaultToAll ? [...validIds] : [];
+  }
+
+  return ids.filter(
+    (id): id is string => typeof id === "string" && validIds.has(id),
+  );
+}
+
 export function parseStoredPayload(parsed: unknown): AppState | null {
   if (!parsed || typeof parsed !== "object") return null;
 
@@ -248,7 +268,30 @@ export function parseStoredPayload(parsed: unknown): AppState | null {
     mutationIds,
   );
 
-  return { currency, sources, mutations, range, mutationLinkGroups };
+  const sourceIds = new Set(sources.map((source) => source.id));
+  const hasStoredVisibility =
+    stored.version === STORAGE_VERSION &&
+    (stored.enabledSourceIds != null || stored.enabledMutationIds != null);
+  const enabledSourceIds = sanitizeEnabledIds(
+    stored.enabledSourceIds,
+    sourceIds,
+    !hasStoredVisibility,
+  );
+  const enabledMutationIds = sanitizeEnabledIds(
+    stored.enabledMutationIds,
+    mutationIds,
+    !hasStoredVisibility,
+  );
+
+  return {
+    currency,
+    sources,
+    mutations,
+    range,
+    mutationLinkGroups,
+    enabledSourceIds,
+    enabledMutationIds,
+  };
 }
 
 export function toStoredPayload(state: AppState): StoredAppState {
@@ -259,6 +302,8 @@ export function toStoredPayload(state: AppState): StoredAppState {
     mutations: state.mutations.map(serializeMutation),
     range: serializeTimeRange(state.range),
     mutationLinkGroups: state.mutationLinkGroups,
+    enabledSourceIds: state.enabledSourceIds,
+    enabledMutationIds: state.enabledMutationIds,
   };
 }
 

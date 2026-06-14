@@ -1,7 +1,7 @@
 import type { MutationLinkGroup } from "@/lib/mutation-links";
 import { sanitizeLinkGroups } from "@/lib/mutation-links";
 import type { AppState } from "@/lib/storage";
-import { parseStoredPayload, toStoredPayload } from "@/lib/storage";
+import { parseStoredPayload, sanitizeEnabledIds, toStoredPayload } from "@/lib/storage";
 import type { Theme } from "@/lib/theme";
 
 export const EXPORT_FORMAT_VERSION = 1;
@@ -29,11 +29,6 @@ export interface ImportResult {
 
 function isTheme(value: unknown): value is Theme {
   return value === "light" || value === "dark";
-}
-
-function sanitizeIdList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((id): id is string => typeof id === "string");
 }
 
 export function createExportBundle(input: {
@@ -81,21 +76,22 @@ export function parseImportBundle(parsed: unknown): ImportResult | null {
   const sourceIds = new Set(appState.sources.map((s) => s.id));
   const mutationIds = new Set(appState.mutations.map((m) => m.id));
 
+  const hasBundleVisibility =
+    bundle.enabledSourceIds != null || bundle.enabledMutationIds != null;
   const enabledSourceIds = new Set(
-    sanitizeIdList(bundle.enabledSourceIds).filter((id) => sourceIds.has(id)),
-  );
-  const enabledMutationIds = new Set(
-    sanitizeIdList(bundle.enabledMutationIds).filter((id) =>
-      mutationIds.has(id),
+    sanitizeEnabledIds(
+      bundle.enabledSourceIds ?? appState.enabledSourceIds,
+      sourceIds,
+      !hasBundleVisibility,
     ),
   );
-
-  for (const id of sourceIds) {
-    if (!enabledSourceIds.has(id)) enabledSourceIds.add(id);
-  }
-  for (const id of mutationIds) {
-    if (!enabledMutationIds.has(id)) enabledMutationIds.add(id);
-  }
+  const enabledMutationIds = new Set(
+    sanitizeEnabledIds(
+      bundle.enabledMutationIds ?? appState.enabledMutationIds,
+      mutationIds,
+      !hasBundleVisibility,
+    ),
+  );
 
   const mutationLinkGroups = sanitizeLinkGroups(
     bundle.mutationLinkGroups ?? appState.mutationLinkGroups,

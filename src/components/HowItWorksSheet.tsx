@@ -101,8 +101,8 @@ export function HowItWorksSheet({
               <strong className="text-foreground">Debt</strong> sources show the
               amount owed on their own line; the{" "}
               <strong className="text-foreground">Total</strong> line subtracts
-              them to reflect net worth. Pay down debt with negative mutations on
-              the debt source.
+              them to reflect net worth. Pay down debt with negative mutations
+              on the debt source.
             </p>
           </Section>
 
@@ -120,8 +120,8 @@ export function HowItWorksSheet({
               <li>
                 <strong className="text-foreground">Applies to</strong> — a
                 specific source, or{" "}
-                <strong className="text-foreground">Total</strong> for portfolio-wide
-                costs split across sources
+                <strong className="text-foreground">Total</strong> for
+                portfolio-wide costs split across sources
               </li>
             </ul>
             <p>
@@ -132,12 +132,12 @@ export function HowItWorksSheet({
 
           <Section title="Example setup">
             <p>
-              A realistic plan might include three sources and several mutations:
+              A realistic plan might include four sources and several mutations:
             </p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                <strong className="text-foreground">Index fund</strong> — €25,000
-                investment at 7% growth
+                <strong className="text-foreground">Index fund</strong> —
+                €25,000 investment at 7% growth
               </li>
               <li>
                 <strong className="text-foreground">Income</strong> — €0 cash
@@ -145,20 +145,36 @@ export function HowItWorksSheet({
               </li>
               <li>
                 <strong className="text-foreground">Home</strong> — €300,000
-                property at 3% growth, ending when sold
+                property at 3% growth
+              </li>
+              <li>
+                <strong className="text-foreground">Mortgage</strong> — €180,000
+                debt at 2.5% interest (shown on its own line, subtracted from
+                Total)
               </li>
             </ul>
             <p>Then add mutations to connect them:</p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                Recurring <strong className="text-foreground">+€3,000 salary</strong>{" "}
-                and <strong className="text-foreground">−€1,500 living expenses</strong>{" "}
+                Recurring{" "}
+                <strong className="text-foreground">+€3,000 salary</strong> and{" "}
+                <strong className="text-foreground">
+                  −€1,500 living expenses
+                </strong>{" "}
                 on Income
               </li>
               <li>
-                Recurring <strong className="text-foreground">−€500</strong> from
-                Income and <strong className="text-foreground">+€500</strong> to
-                Index fund — a monthly savings transfer pair
+                Recurring <strong className="text-foreground">−€500</strong>{" "}
+                from Income and{" "}
+                <strong className="text-foreground">+€500</strong> to Index fund
+                — a monthly savings transfer pair
+              </li>
+              <li>
+                Recurring{" "}
+                <strong className="text-foreground">
+                  −€900 mortgage payment
+                </strong>{" "}
+                on the Mortgage debt source
               </li>
               <li>
                 One-off <strong className="text-foreground">sell home</strong>{" "}
@@ -166,20 +182,23 @@ export function HowItWorksSheet({
                 <strong className="text-foreground">sale proceeds</strong> (the
                 full sale price to Index fund), and{" "}
                 <strong className="text-foreground">mortgage payoff</strong>{" "}
-                (−€180,000 on Total) — all on the same date. Net worth drops by
-                the mortgage amount, then keeps growing from salary and savings.
+                (zeros the remaining mortgage balance) — all on the same date
               </li>
             </ul>
             <p>
-              Tip: set the property&apos;s end date to the sale date so it stops
-              growing after you sell. Use{" "}
-              <strong className="text-foreground">Link mutations</strong> in chart
-              visibility to toggle related events together.
+              The example loads with the home sale mutations{" "}
+              <strong className="text-foreground">disabled</strong>, so Home and
+              Mortgage keep growing on the chart.
+            </p>
+            <p>
+              After applying the example data, try toggling{" "}
+              <strong className="text-foreground">Sell home</strong> to see how
+              selling could change your wealth trajectory.
             </p>
             <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                Applying the example will replace all existing sources, mutations,
-                and chart settings.
+                Applying the example will replace all existing sources,
+                mutations, and chart settings.
               </p>
               <LoadingButton
                 type="button"
@@ -210,18 +229,19 @@ export function HowItWorksSheet({
                 slider to zoom in on a period
               </li>
               <li>
-                The chart timeline extends to the latest end date on any source or
-                mutation
+                The chart timeline extends to the latest end date on any source
+                or mutation
               </li>
             </ul>
           </Section>
 
           <Section title="4. Explore scenarios">
             <p>
-              Under <strong className="text-foreground">Chart visibility</strong>,
+              Under{" "}
+              <strong className="text-foreground">Chart visibility</strong>,
               toggle sources and mutations on or off without deleting them. This
-              lets you ask &ldquo;what if I didn&apos;t sell the home?&rdquo;
-              or hide a recurring expense to compare outcomes.
+              lets you ask &ldquo;what if I didn&apos;t sell the home?&rdquo; or
+              hide a recurring expense to compare outcomes.
             </p>
             <p>
               Use <strong className="text-foreground">Link mutations</strong> to
@@ -238,12 +258,14 @@ export function HowItWorksSheet({
                 mutation from the sidebar list
               </li>
               <li>
-                <strong className="text-foreground">Export / Import</strong> saves
-                your full setup as JSON, including visibility and link groups
+                <strong className="text-foreground">Export / Import</strong>{" "}
+                saves your full setup as JSON, including visibility and link
+                groups
               </li>
               <li>
                 Switch <strong className="text-foreground">currency</strong> and{" "}
-                <strong className="text-foreground">theme</strong> from the header
+                <strong className="text-foreground">theme</strong> from the
+                header
               </li>
               <li>
                 Data is stored in your browser automatically between sessions

@@ -58,10 +58,10 @@ export default function App() {
   );
   const [range, setRange] = useState<TimeRange | null>(initialState.range);
   const [enabledSourceIds, setEnabledSourceIds] = useState<Set<string>>(
-    () => new Set(initialState.sources.map((s) => s.id)),
+    () => new Set(initialState.enabledSourceIds),
   );
   const [enabledMutationIds, setEnabledMutationIds] = useState<Set<string>>(
-    () => new Set(initialState.mutations.map((m) => m.id)),
+    () => new Set(initialState.enabledMutationIds),
   );
   const [mutationLinkGroups, setMutationLinkGroups] = useState<
     MutationLinkGroup[]
@@ -74,8 +74,24 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    saveAppState({ currency, sources, mutations, range, mutationLinkGroups });
-  }, [currency, sources, mutations, range, mutationLinkGroups]);
+    saveAppState({
+      currency,
+      sources,
+      mutations,
+      range,
+      mutationLinkGroups,
+      enabledSourceIds: [...enabledSourceIds],
+      enabledMutationIds: [...enabledMutationIds],
+    });
+  }, [
+    currency,
+    sources,
+    mutations,
+    range,
+    mutationLinkGroups,
+    enabledSourceIds,
+    enabledMutationIds,
+  ]);
 
   const mutationGroups = useMemo((): Array<{
     key: string;
@@ -291,13 +307,15 @@ export default function App() {
             </div>
             <div>
               <DataTransferControls
-                appState={{
-                  currency,
-                  sources,
-                  mutations,
-                  range,
-                  mutationLinkGroups,
-                }}
+              appState={{
+                currency,
+                sources,
+                mutations,
+                range,
+                mutationLinkGroups,
+                enabledSourceIds: [...enabledSourceIds],
+                enabledMutationIds: [...enabledMutationIds],
+              }}
                 theme={theme}
                 enabledSourceIds={enabledSourceIds}
                 enabledMutationIds={enabledMutationIds}
