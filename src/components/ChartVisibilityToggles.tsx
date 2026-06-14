@@ -21,7 +21,12 @@ import {
   type MutationLinkGroup,
 } from "@/lib/mutation-links";
 import { cn } from "@/lib/utils";
-import type { Currency, Mutation, Source } from "@/types/wealth";
+import {
+  isLiabilitySource,
+  type Currency,
+  type Mutation,
+  type Source,
+} from "@/types/wealth";
 
 interface ChartVisibilityTogglesProps {
   sources: Source[];
@@ -55,7 +60,13 @@ function mutationDescription(mutation: Mutation): string {
   return `One-off on ${formatShortDate(mutation.date)}`;
 }
 
-function GrowthIndicator({ growth }: { growth: number }) {
+function GrowthIndicator({
+  growth,
+  isDebt,
+}: {
+  growth: number;
+  isDebt?: boolean;
+}) {
   const sign = growthSign(growth);
 
   return (
@@ -64,7 +75,7 @@ function GrowthIndicator({ growth }: { growth: number }) {
         "flex h-4 min-w-4 shrink-0 cursor-default items-center justify-center rounded px-1 text-[10px] font-bold leading-none tabular-nums",
         sign === "positive" &&
           "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-        sign === "negative" && "bg-destructive/15 text-destructive",
+        (sign === "negative" || isDebt) && "bg-destructive/15 text-destructive",
         sign === "neutral" && "bg-muted text-muted-foreground",
       )}
       aria-label={growth === 0 ? "0% growth" : `${growth}% growth`}
@@ -182,6 +193,7 @@ function VisibilityToggle({
   linkedLabels = [],
   groupColor,
   onRemoveLink,
+  isDebt = false,
 }: {
   enabled: boolean;
   onToggle: () => void;
@@ -202,6 +214,7 @@ function VisibilityToggle({
   linkedLabels?: string[];
   groupColor?: string;
   onRemoveLink?: (groupId: string) => void;
+  isDebt?: boolean;
 }) {
   const switchDisabled = disabled || isBusy;
 
@@ -246,7 +259,7 @@ function VisibilityToggle({
             aria-hidden
           />
         )}
-        {growth != null && <GrowthIndicator growth={growth} />}
+        {growth != null && <GrowthIndicator growth={growth} isDebt={isDebt} />}
         {sign && mutationValue != null && (
           <SignIndicator
             sign={sign}
@@ -255,14 +268,21 @@ function VisibilityToggle({
           />
         )}
         <div className="min-w-0">
-          <p
-            className={cn(
-              "truncate text-sm font-medium",
-              !enabled && "text-muted-foreground",
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p
+              className={cn(
+                "truncate text-sm font-medium",
+                !enabled && "text-muted-foreground",
+              )}
+            >
+              {label}
+            </p>
+            {isDebt && (
+              <span className="text-muted-foreground shrink-0 text-sm font-normal">
+                (debt)
+              </span>
             )}
-          >
-            {label}
-          </p>
+          </div>
           {description && (
             <p className="text-muted-foreground truncate text-xs">
               {description}
@@ -551,6 +571,7 @@ export function ChartVisibilityToggles({
                   color={source.color}
                   growth={source.growth}
                   currency={currency}
+                  isDebt={isLiabilitySource(source.type)}
                   isLoading={activeToggleKey === `source:${source.id}`}
                   isBusy={isBusy}
                 />

@@ -29,7 +29,12 @@ import {
 } from "@/lib/wealth-calculations";
 import type { Currency, Mutation, Source, TimeRange } from "@/types/wealth";
 import { MUTATION_TYPE_LABELS, WEALTH_TYPE_LABELS } from "@/types/wealth";
-import { loadAppState, saveAppState, getDefaultAppState, clearAppState } from "@/lib/storage";
+import {
+  loadAppState,
+  saveAppState,
+  getDefaultAppState,
+  clearAppState,
+} from "@/lib/storage";
 import type { ImportResult } from "@/lib/export-import";
 import {
   createLinkGroup,
@@ -320,15 +325,15 @@ export default function App() {
             </div>
             <div>
               <DataTransferControls
-              appState={{
-                currency,
-                sources,
-                mutations,
-                range,
-                mutationLinkGroups,
-                enabledSourceIds: [...enabledSourceIds],
-                enabledMutationIds: [...enabledMutationIds],
-              }}
+                appState={{
+                  currency,
+                  sources,
+                  mutations,
+                  range,
+                  mutationLinkGroups,
+                  enabledSourceIds: [...enabledSourceIds],
+                  enabledMutationIds: [...enabledMutationIds],
+                }}
                 theme={theme}
                 enabledSourceIds={enabledSourceIds}
                 enabledMutationIds={enabledMutationIds}
