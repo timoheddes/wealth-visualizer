@@ -167,7 +167,7 @@ export function HowItWorksSheet() {
                 net-worth sum (assets minus debt)
               </li>
               <li>
-                Colored dots mark mutation dates — hover for details
+                Colored dots mark one-off mutation dates — hover for details
               </li>
               <li>
                 Drag the <strong className="text-foreground">time range</strong>{" "}

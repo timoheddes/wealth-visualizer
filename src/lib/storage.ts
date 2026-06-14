@@ -1,3 +1,5 @@
+import type { MutationLinkGroup } from "@/lib/mutation-links";
+import { sanitizeLinkGroups } from "@/lib/mutation-links";
 import type {
   Currency,
   Mutation,
@@ -10,7 +12,7 @@ import type {
 import { getDefaultSourceColor } from "@/types/wealth";
 
 const STORAGE_KEY = "wealth-visualizer";
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
 
 interface StoredSource {
   id: string;
@@ -41,12 +43,18 @@ interface StoredTimeRange {
   end: string;
 }
 
+interface StoredMutationLinkGroup {
+  id: string;
+  mutationIds: string[];
+}
+
 interface StoredAppState {
   version: number;
   currency: Currency;
   sources: StoredSource[];
   mutations: StoredMutation[];
   range: StoredTimeRange | null;
+  mutationLinkGroups?: StoredMutationLinkGroup[];
 }
 
 export interface AppState {
@@ -54,6 +62,7 @@ export interface AppState {
   sources: Source[];
   mutations: Mutation[];
   range: TimeRange | null;
+  mutationLinkGroups: MutationLinkGroup[];
 }
 
 const DEFAULT_APP_STATE: AppState = {
@@ -61,6 +70,7 @@ const DEFAULT_APP_STATE: AppState = {
   sources: [],
   mutations: [],
   range: null,
+  mutationLinkGroups: [],
 };
 
 const VALID_CURRENCIES = new Set<Currency>(["USD", "EUR", "GBP"]);
@@ -232,8 +242,13 @@ export function parseStoredPayload(parsed: unknown): AppState | null {
     .filter((m): m is Mutation => m !== null);
 
   const range = toTimeRange(stored.range ?? null);
+  const mutationIds = new Set(mutations.map((mutation) => mutation.id));
+  const mutationLinkGroups = sanitizeLinkGroups(
+    stored.mutationLinkGroups,
+    mutationIds,
+  );
 
-  return { currency, sources, mutations, range };
+  return { currency, sources, mutations, range, mutationLinkGroups };
 }
 
 export function toStoredPayload(state: AppState): StoredAppState {
@@ -243,6 +258,7 @@ export function toStoredPayload(state: AppState): StoredAppState {
     sources: state.sources.map(serializeSource),
     mutations: state.mutations.map(serializeMutation),
     range: serializeTimeRange(state.range),
+    mutationLinkGroups: state.mutationLinkGroups,
   };
 }
 

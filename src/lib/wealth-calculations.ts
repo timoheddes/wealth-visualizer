@@ -366,6 +366,8 @@ export function getMutationMarkers(
   const markers: MutationMarker[] = [];
 
   for (const mutation of mutations) {
+    if (mutation.type !== "once") continue;
+
     if (mutation.target === "source") {
       const source = sources.find((s) => s.id === mutation.sourceId);
       if (!source) continue;

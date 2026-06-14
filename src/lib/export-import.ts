@@ -98,7 +98,7 @@ export function parseImportBundle(parsed: unknown): ImportResult | null {
   }
 
   const mutationLinkGroups = sanitizeLinkGroups(
-    bundle.mutationLinkGroups,
+    bundle.mutationLinkGroups ?? appState.mutationLinkGroups,
     mutationIds,
   );
 

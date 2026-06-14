@@ -57,7 +57,7 @@ export default function App() {
   );
   const [mutationLinkGroups, setMutationLinkGroups] = useState<
     MutationLinkGroup[]
-  >([]);
+  >(() => initialState.mutationLinkGroups);
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
 
   useEffect(() => {
@@ -66,8 +66,8 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    saveAppState({ currency, sources, mutations, range });
-  }, [currency, sources, mutations, range]);
+    saveAppState({ currency, sources, mutations, range, mutationLinkGroups });
+  }, [currency, sources, mutations, range, mutationLinkGroups]);
 
   const mutationGroups = useMemo((): Array<{
     key: string;
@@ -278,7 +278,13 @@ export default function App() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-4">
             <DataTransferControls
-              appState={{ currency, sources, mutations, range }}
+              appState={{
+                currency,
+                sources,
+                mutations,
+                range,
+                mutationLinkGroups,
+              }}
               theme={theme}
               enabledSourceIds={enabledSourceIds}
               enabledMutationIds={enabledMutationIds}
