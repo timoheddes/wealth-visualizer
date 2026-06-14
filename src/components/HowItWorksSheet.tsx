@@ -1,4 +1,7 @@
+import { useState } from "react";
+import { LoadingButton } from "@/components/LoadingButton";
 import { Button } from "@/components/ui/button";
+import { useDeferredAction } from "@/lib/use-deferred-action";
 import {
   Sheet,
   SheetContent,
@@ -23,9 +26,23 @@ function Section({
   );
 }
 
-export function HowItWorksSheet() {
+export function HowItWorksSheet({
+  onApplyExample,
+}: {
+  onApplyExample: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { isPending, run } = useDeferredAction();
+
+  function handleApplyExample() {
+    run(() => {
+      onApplyExample();
+      setOpen(false);
+    });
+  }
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           type="button"
@@ -157,6 +174,23 @@ export function HowItWorksSheet() {
               <strong className="text-foreground">Link mutations</strong> in chart
               visibility to toggle related events together.
             </p>
+            <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                Applying the example will replace all existing sources, mutations,
+                and chart settings.
+              </p>
+              <LoadingButton
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                isLoading={isPending}
+                loadingLabel="Applying example..."
+                onClick={handleApplyExample}
+              >
+                Apply example data
+              </LoadingButton>
+            </div>
           </Section>
 
           <Section title="3. Read the chart">

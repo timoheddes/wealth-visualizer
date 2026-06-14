@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { HowItWorksSheet } from "@/components/HowItWorksSheet";
+import { createExampleImportResult } from "@/lib/example-data";
 import { ChartVisibilityToggles } from "@/components/ChartVisibilityToggles";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { DataTransferControls } from "@/components/DataTransferControls";
@@ -277,7 +278,11 @@ export default function App() {
               Project and track wealth across sources, growth, and one-off
               mutations.
             </p>
-            <HowItWorksSheet />
+            <HowItWorksSheet
+              onApplyExample={() =>
+                handleImport(createExampleImportResult(theme))
+              }
+            />
           </div>
           <div className="flex flex-col items-end justify-end gap-4">
             <div className="flex flex-row items-end gap-2">
