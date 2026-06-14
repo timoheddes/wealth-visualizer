@@ -162,10 +162,12 @@ export function HowItWorksSheet({
               </li>
               <li>
                 One-off <strong className="text-foreground">sell home</strong>{" "}
-                (−€300,000), <strong className="text-foreground">sale profit</strong>{" "}
-                (+€50,000 to Index fund), and{" "}
-                <strong className="text-foreground">mortgage payoff</strong> (−€180,000
-                on Total) — all on the same date
+                (removes the property at its sale value),{" "}
+                <strong className="text-foreground">sale proceeds</strong> (the
+                full sale price to Index fund), and{" "}
+                <strong className="text-foreground">mortgage payoff</strong>{" "}
+                (−€180,000 on Total) — all on the same date. Net worth drops by
+                the mortgage amount, then keeps growing from salary and savings.
               </li>
             </ul>
             <p>
@@ -223,9 +225,9 @@ export function HowItWorksSheet({
             </p>
             <p>
               Use <strong className="text-foreground">Link mutations</strong> to
-              group related events — e.g. link the sell, profit, and mortgage
-              mutations so one toggle controls the whole transaction. Recurring
-              transfer pairs (outflow + inflow) work the same way.
+              group related events — e.g. link the sell, sale proceeds, and
+              mortgage mutations so one toggle controls the whole transaction.
+              Recurring transfer pairs (outflow + inflow) work the same way.
             </p>
           </Section>
 

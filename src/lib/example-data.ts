@@ -1,4 +1,5 @@
 import type { ImportResult } from "@/lib/export-import";
+import { sourceValueAt } from "@/lib/wealth-calculations";
 import type { MutationLinkGroup } from "@/lib/mutation-links";
 import type { Theme } from "@/lib/theme";
 import type { Mutation, Source } from "@/types/wealth";
@@ -33,6 +34,17 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
   const planEnd = exampleDate("2036-06-14");
   const saleDate = exampleDate("2031-06-14");
 
+  const homeSource: Source = {
+    id: SOURCE_IDS.home,
+    type: "property",
+    label: "Home",
+    color: "#fd7e14",
+    initialValue: 300_000,
+    initialDate: planStart,
+    endDate: saleDate,
+    growth: 3,
+  };
+
   const sources: Source[] = [
     {
       id: SOURCE_IDS.indexFund,
@@ -54,17 +66,12 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       endDate: planEnd,
       growth: 0,
     },
-    {
-      id: SOURCE_IDS.home,
-      type: "property",
-      label: "Home",
-      color: "#fd7e14",
-      initialValue: 300_000,
-      initialDate: planStart,
-      endDate: saleDate,
-      growth: 3,
-    },
+    homeSource,
   ];
+
+  // Sale price at the sale date (grown property value). The sell mutation
+  // removes the home line; sale proceeds deposit that cash into investments.
+  const saleProceeds = Math.round(sourceValueAt(homeSource, saleDate));
 
   const mutations: Mutation[] = [
     {
@@ -119,7 +126,7 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       id: MUTATION_IDS.sellHome,
       target: "source",
       sourceId: SOURCE_IDS.home,
-      value: -300_000,
+      value: -saleProceeds,
       label: "Sell home",
       date: saleDate,
       type: "once",
@@ -131,8 +138,8 @@ export function createExampleImportResult(theme: Theme = "light"): ImportResult 
       id: MUTATION_IDS.saleProfit,
       target: "source",
       sourceId: SOURCE_IDS.indexFund,
-      value: 50_000,
-      label: "Sale profit",
+      value: saleProceeds,
+      label: "Sale proceeds",
       date: saleDate,
       type: "once",
       frequency: 0,
