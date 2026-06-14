@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/select";
 import { parseDateInput, toDateInputValue } from "@/lib/wealth-calculations";
 import type { Source, WealthType } from "@/types/wealth";
-import { DEFAULT_GROWTH_BY_TYPE, getDefaultSourceColor, WEALTH_TYPE_LABELS } from "@/types/wealth";
+import {
+  DEFAULT_GROWTH_BY_TYPE,
+  getDefaultSourceColor,
+  WEALTH_TYPE_LABELS,
+} from "@/types/wealth";
 
 export interface SourceFormValues {
   type: WealthType;
@@ -152,6 +156,7 @@ export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
           <Input
             id="source-start"
             type="date"
+            style={{ fontSize: "0.7em" }}
             value={values.initialDate}
             onChange={(e) =>
               setValues((v) => ({ ...v, initialDate: e.target.value }))
@@ -165,6 +170,7 @@ export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
             id="source-end"
             type="date"
             value={values.endDate}
+            style={{ fontSize: "0.7em" }}
             onChange={(e) =>
               setValues((v) => ({ ...v, endDate: e.target.value }))
             }

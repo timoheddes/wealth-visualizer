@@ -183,6 +183,7 @@ export function MutationFormFields({
             id={fieldId("date")}
             type="date"
             value={values.date}
+            style={{ fontSize: "0.7em" }}
             onChange={(e) => update({ date: e.target.value })}
             required
           />
