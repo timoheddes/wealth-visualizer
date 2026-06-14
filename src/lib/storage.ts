@@ -1,0 +1,236 @@
+import type {
+  Currency,
+  Mutation,
+  MutationType,
+  Source,
+  TimeRange,
+  WealthType,
+} from "@/types/wealth";
+import { getDefaultSourceColor } from "@/types/wealth";
+
+const STORAGE_KEY = "wealth-visualizer";
+const STORAGE_VERSION = 2;
+
+interface StoredSource {
+  id: string;
+  type: WealthType;
+  label: string;
+  color: string;
+  initialValue: number;
+  initialDate: string;
+  endDate: string;
+  growth: number;
+}
+
+interface StoredMutation {
+  id: string;
+  sourceId: string;
+  value: number;
+  label: string;
+  date: string;
+  type?: MutationType;
+  frequency?: number;
+  endDate?: string | null;
+  color?: string;
+}
+
+interface StoredTimeRange {
+  start: string;
+  end: string;
+}
+
+interface StoredAppState {
+  version: number;
+  currency: Currency;
+  sources: StoredSource[];
+  mutations: StoredMutation[];
+  range: StoredTimeRange | null;
+}
+
+export interface AppState {
+  currency: Currency;
+  sources: Source[];
+  mutations: Mutation[];
+  range: TimeRange | null;
+}
+
+const DEFAULT_APP_STATE: AppState = {
+  currency: "USD",
+  sources: [],
+  mutations: [],
+  range: null,
+};
+
+const VALID_CURRENCIES = new Set<Currency>(["USD", "EUR", "GBP"]);
+const VALID_WEALTH_TYPES = new Set<WealthType>([
+  "investment",
+  "cash",
+  "property",
+]);
+const VALID_MUTATION_TYPES = new Set<MutationType>(["once", "recurring"]);
+
+function parseDate(value: string): Date | null {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isStoredSource(value: unknown): value is StoredSource {
+  if (!value || typeof value !== "object") return false;
+  const s = value as StoredSource;
+  return (
+    typeof s.id === "string" &&
+    VALID_WEALTH_TYPES.has(s.type) &&
+    typeof s.label === "string" &&
+    typeof s.color === "string" &&
+    typeof s.initialValue === "number" &&
+    typeof s.initialDate === "string" &&
+    typeof s.endDate === "string" &&
+    typeof s.growth === "number"
+  );
+}
+
+function isStoredMutation(value: unknown): value is StoredMutation {
+  if (!value || typeof value !== "object") return false;
+  const m = value as StoredMutation;
+  return (
+    typeof m.id === "string" &&
+    typeof m.sourceId === "string" &&
+    typeof m.value === "number" &&
+    typeof m.label === "string" &&
+    typeof m.date === "string"
+  );
+}
+
+function toSource(stored: StoredSource): Source | null {
+  const initialDate = parseDate(stored.initialDate);
+  const endDate = parseDate(stored.endDate);
+  if (!initialDate || !endDate) return null;
+  return { ...stored, initialDate, endDate };
+}
+
+function toMutation(
+  stored: StoredMutation,
+  sources: Source[],
+): Mutation | null {
+  const date = parseDate(stored.date);
+  if (!date) return null;
+
+  const source = sources.find((s) => s.id === stored.sourceId);
+  const type =
+    stored.type && VALID_MUTATION_TYPES.has(stored.type)
+      ? stored.type
+      : "once";
+  const endDate =
+    stored.endDate != null && stored.endDate !== ""
+      ? parseDate(stored.endDate)
+      : null;
+
+  return {
+    id: stored.id,
+    sourceId: stored.sourceId,
+    value: stored.value,
+    label: stored.label,
+    date,
+    type,
+    frequency: stored.frequency ?? 0,
+    endDate,
+    color: stored.color ?? source?.color ?? getDefaultSourceColor(0),
+  };
+}
+
+function toTimeRange(stored: StoredTimeRange | null): TimeRange | null {
+  if (!stored) return null;
+  const start = parseDate(stored.start);
+  const end = parseDate(stored.end);
+  if (!start || !end || start >= end) return null;
+  return { start, end };
+}
+
+function serializeSource(source: Source): StoredSource {
+  return {
+    id: source.id,
+    type: source.type,
+    label: source.label,
+    color: source.color,
+    initialValue: source.initialValue,
+    initialDate: source.initialDate.toISOString(),
+    endDate: source.endDate.toISOString(),
+    growth: source.growth,
+  };
+}
+
+function serializeMutation(mutation: Mutation): StoredMutation {
+  return {
+    id: mutation.id,
+    sourceId: mutation.sourceId,
+    value: mutation.value,
+    label: mutation.label,
+    date: mutation.date.toISOString(),
+    type: mutation.type,
+    frequency: mutation.frequency,
+    endDate: mutation.endDate?.toISOString() ?? null,
+    color: mutation.color,
+  };
+}
+
+function serializeTimeRange(range: TimeRange | null): StoredTimeRange | null {
+  if (!range) return null;
+  return {
+    start: range.start.toISOString(),
+    end: range.end.toISOString(),
+  };
+}
+
+export function loadAppState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_APP_STATE;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return DEFAULT_APP_STATE;
+
+    const stored = parsed as Partial<StoredAppState>;
+    if (stored.version !== 1 && stored.version !== STORAGE_VERSION) {
+      return DEFAULT_APP_STATE;
+    }
+
+    const currency = VALID_CURRENCIES.has(stored.currency as Currency)
+      ? (stored.currency as Currency)
+      : DEFAULT_APP_STATE.currency;
+
+    const sources = (stored.sources ?? [])
+      .filter(isStoredSource)
+      .map(toSource)
+      .filter((s): s is Source => s !== null);
+
+    const sourceIds = new Set(sources.map((s) => s.id));
+
+    const mutations = (stored.mutations ?? [])
+      .filter(isStoredMutation)
+      .filter((m) => sourceIds.has(m.sourceId))
+      .map((m) => toMutation(m, sources))
+      .filter((m): m is Mutation => m !== null);
+
+    const range = toTimeRange(stored.range ?? null);
+
+    return { currency, sources, mutations, range };
+  } catch {
+    return DEFAULT_APP_STATE;
+  }
+}
+
+export function saveAppState(state: AppState): void {
+  const stored: StoredAppState = {
+    version: STORAGE_VERSION,
+    currency: state.currency,
+    sources: state.sources.map(serializeSource),
+    mutations: state.mutations.map(serializeMutation),
+    range: serializeTimeRange(state.range),
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Ignore quota or privacy mode errors.
+  }
+}
