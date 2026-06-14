@@ -348,6 +348,45 @@ export function buildChartData(
   });
 }
 
+export interface ChartSummaryEntry {
+  id: string;
+  label: string;
+  color: string;
+  displayValue: number;
+}
+
+export interface ChartEndpointSummary {
+  date: Date;
+  sources: ChartSummaryEntry[];
+  total: number;
+}
+
+/** Values at the last point in the chart range (end-of-range tooltip snapshot). */
+export function getChartEndpointSummary(
+  sources: Source[],
+  mutations: Mutation[],
+  range: TimeRange,
+): ChartEndpointSummary | null {
+  const chartData = buildChartData(sources, mutations, range);
+  if (chartData.length === 0) return null;
+
+  const point = chartData[chartData.length - 1];
+
+  return {
+    date: point.date as Date,
+    sources: sources.map((source) => {
+      const raw = Number(point[source.id] ?? 0);
+      return {
+        id: source.id,
+        label: source.label,
+        color: source.color,
+        displayValue: isLiabilitySource(source.type) ? -Math.abs(raw) : raw,
+      };
+    }),
+    total: Number(point.total ?? 0),
+  };
+}
+
 export interface MutationMarker {
   id: string;
   mutation: Mutation;

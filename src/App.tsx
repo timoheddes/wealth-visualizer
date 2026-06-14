@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { HowItWorksSheet } from "@/components/HowItWorksSheet";
 import { createExampleImportResult } from "@/lib/example-data";
+import { ChartSummary } from "@/components/ChartSummary";
 import { ChartVisibilityToggles } from "@/components/ChartVisibilityToggles";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { DataTransferControls } from "@/components/DataTransferControls";
@@ -533,12 +534,20 @@ export default function App() {
                 />
               )}
               {chartRange && visibleSources.length > 0 ? (
-                <WealthChart
-                  sources={visibleSources}
-                  mutations={visibleMutations}
-                  range={chartRange}
-                  currency={currency}
-                />
+                <>
+                  <WealthChart
+                    sources={visibleSources}
+                    mutations={visibleMutations}
+                    range={chartRange}
+                    currency={currency}
+                  />
+                  <ChartSummary
+                    sources={visibleSources}
+                    mutations={visibleMutations}
+                    range={chartRange}
+                    currency={currency}
+                  />
+                </>
               ) : (
                 <div className="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">
                   {sources.length === 0
