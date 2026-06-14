@@ -493,7 +493,7 @@ export default function App() {
             <CardHeader>
               <CardTitle>Projection</CardTitle>
               <CardDescription>
-                Each source is a line; dashed line is total. Dots mark
+                Each source is a line; dashed line is total. Dots mark one-off
                 mutations.
               </CardDescription>
             </CardHeader>
