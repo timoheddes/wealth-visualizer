@@ -40,7 +40,12 @@ interface MutationScatterPoint {
   color: string;
 }
 
-export function WealthChart({ sources, mutations, range, currency }: WealthChartProps) {
+export function WealthChart({
+  sources,
+  mutations,
+  range,
+  currency,
+}: WealthChartProps) {
   const data = buildChartData(sources, mutations, range);
   const markers = getMutationMarkers(sources, mutations, range);
 
@@ -79,7 +84,10 @@ export function WealthChart({ sources, mutations, range, currency }: WealthChart
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-80 w-full">
-      <LineChart data={data} margin={{ top: 8, right: 12, left: 12, bottom: 0 }}>
+      <LineChart
+        data={data}
+        margin={{ top: 8, right: 12, left: 12, bottom: 0 }}
+      >
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="timestamp"
@@ -126,14 +134,27 @@ export function WealthChart({ sources, mutations, range, currency }: WealthChart
 
             return (
               <ChartTooltipContent
-                payload={payload}
+                payload={payload.filter(
+                  (item) =>
+                    !item.payload ||
+                    !("mutationLabel" in item.payload) ||
+                    !item.payload.mutationLabel,
+                )}
                 active={active}
                 labelFormatter={(_, items) => {
                   const point = items?.[0]?.payload;
                   if (!point?.date) return "";
                   return formatDate(point.date as Date);
                 }}
-                formatter={(value) => formatCurrency(Number(value), currency)}
+                formatter={(value, name) => {
+                  const key = String(name ?? "");
+                  const label = chartConfig[key]?.label ?? key;
+                  return (
+                    <span className="text-foreground font-mono font-medium tabular-nums">
+                      {label}: {formatCurrency(Number(value), currency)}
+                    </span>
+                  );
+                }}
               />
             );
           }}
@@ -145,6 +166,7 @@ export function WealthChart({ sources, mutations, range, currency }: WealthChart
             key={source.id}
             type="monotone"
             dataKey={source.id}
+            name={source.id}
             stroke={source.color}
             strokeWidth={2}
             dot={false}
@@ -155,6 +177,7 @@ export function WealthChart({ sources, mutations, range, currency }: WealthChart
         <Line
           type="monotone"
           dataKey="total"
+          name="total"
           stroke="var(--foreground)"
           strokeWidth={2.5}
           strokeDasharray="6 4"
