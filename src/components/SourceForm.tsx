@@ -14,6 +14,8 @@ import type { Source, WealthType } from "@/types/wealth";
 import {
   DEFAULT_GROWTH_BY_TYPE,
   getDefaultSourceColor,
+  WEALTH_TYPE_INITIAL_VALUE_LABELS,
+  WEALTH_TYPES,
   WEALTH_TYPE_LABELS,
 } from "@/types/wealth";
 
@@ -94,7 +96,7 @@ export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(Object.keys(WEALTH_TYPE_LABELS) as WealthType[]).map((type) => (
+            {WEALTH_TYPES.map((type) => (
               <SelectItem key={type} value={type}>
                 {WEALTH_TYPE_LABELS[type]}
               </SelectItem>
@@ -123,11 +125,14 @@ export function SourceForm({ onAdd, sourcesCount }: SourceFormProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-2">
-          <Label htmlFor="source-initial">Initial value</Label>
+          <Label htmlFor="source-initial">
+            {WEALTH_TYPE_INITIAL_VALUE_LABELS[values.type]}
+          </Label>
           <Input
             id="source-initial"
             type="number"
             step="any"
+            min={0}
             value={values.initialValue}
             onChange={(e) =>
               setValues((v) => ({ ...v, initialValue: e.target.value }))

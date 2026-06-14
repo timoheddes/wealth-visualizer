@@ -22,7 +22,8 @@ import {
   getMutationMarkers,
 } from "@/lib/wealth-calculations";
 import type { Currency, Mutation, Source, TimeRange } from "@/types/wealth";
-import { MUTATION_TYPE_LABELS } from "@/types/wealth";
+import { isLiabilitySource, MUTATION_TYPE_LABELS } from "@/types/wealth";
+import { useMemo } from "react";
 
 interface WealthChartProps {
   sources: Source[];
@@ -57,6 +58,16 @@ export function WealthChart({
     mutationType: MUTATION_TYPE_LABELS[marker.mutation.type],
     color: marker.mutation.color,
   }));
+
+  const liabilitySourceIds = useMemo(
+    () =>
+      new Set(
+        sources
+          .filter((source) => isLiabilitySource(source.type))
+          .map((source) => source.id),
+      ),
+    [sources],
+  );
 
   const chartConfig: ChartConfig = {
     total: {
@@ -149,9 +160,13 @@ export function WealthChart({
                 formatter={(value, name) => {
                   const key = String(name ?? "");
                   const label = chartConfig[key]?.label ?? key;
+                  const raw = Number(value);
+                  const displayValue = liabilitySourceIds.has(key)
+                    ? -Math.abs(raw)
+                    : raw;
                   return (
                     <span className="text-foreground font-mono font-medium tabular-nums">
-                      {label}: {formatCurrency(Number(value), currency)}
+                      {label}: {formatCurrency(displayValue, currency)}
                     </span>
                   );
                 }}

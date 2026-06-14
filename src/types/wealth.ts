@@ -1,4 +1,20 @@
-export type WealthType = "investment" | "cash" | "property";
+export type WealthType =
+  | "investment"
+  | "cash"
+  | "property"
+  | "pension"
+  | "depreciating"
+  | "debt";
+
+/** Display order for type selectors */
+export const WEALTH_TYPES: WealthType[] = [
+  "investment",
+  "cash",
+  "property",
+  "pension",
+  "depreciating",
+  "debt",
+];
 
 export type Currency = "USD" | "EUR" | "GBP";
 
@@ -74,13 +90,32 @@ export const WEALTH_TYPE_LABELS: Record<WealthType, string> = {
   investment: "Investment",
   cash: "Cash",
   property: "Property",
+  pension: "Pension",
+  depreciating: "Depreciating asset",
+  debt: "Debt",
 };
 
 export const DEFAULT_GROWTH_BY_TYPE: Record<WealthType, number> = {
   investment: 8,
   cash: 0,
   property: 5,
+  pension: 6,
+  depreciating: -12,
+  debt: 4,
 };
+
+export const WEALTH_TYPE_INITIAL_VALUE_LABELS: Record<WealthType, string> = {
+  investment: "Initial value",
+  cash: "Initial value",
+  property: "Initial value",
+  pension: "Current balance",
+  depreciating: "Current value",
+  debt: "Balance owed",
+};
+
+export function isLiabilitySource(type: WealthType): boolean {
+  return type === "debt";
+}
 
 export const DEFAULT_SOURCE_COLORS = [
   "#4c6ef5",

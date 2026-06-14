@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { HowItWorksSheet } from "@/components/HowItWorksSheet";
 import { ChartVisibilityToggles } from "@/components/ChartVisibilityToggles";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { DataTransferControls } from "@/components/DataTransferControls";
@@ -273,6 +274,7 @@ export default function App() {
               Project and track wealth across sources, growth, and one-off
               mutations.
             </p>
+            <HowItWorksSheet />
           </div>
           <div className="flex flex-wrap items-center justify-end gap-4">
             <DataTransferControls
@@ -295,7 +297,7 @@ export default function App() {
             <CardHeader>
               <CardTitle>Add source</CardTitle>
               <CardDescription>
-                A fund or asset with initial value and projected growth.
+                Assets and liabilities with initial balance, growth, and an end date.
               </CardDescription>
             </CardHeader>
             <CardContent>

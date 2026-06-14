@@ -10,6 +10,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import type { ChartPoint, Mutation, Source, TimeRange } from "@/types/wealth";
+import { isLiabilitySource } from "@/types/wealth";
 
 const DAYS_PER_YEAR = 365.25;
 
@@ -30,6 +31,14 @@ export function sourceValueAt(source: Source, date: Date): number {
 
   const days = differenceInCalendarDays(date, source.initialDate);
   return source.initialValue * growthMultiplier(source.growth, days);
+}
+
+/** How a source value contributes to net-worth total (debts subtract). */
+export function sourceContributionToTotal(
+  source: Source,
+  value: number,
+): number {
+  return isLiabilitySource(source.type) ? -value : value;
 }
 
 /** All occurrence dates for a mutation on or before the given date. */
@@ -178,12 +187,19 @@ function portfolioWeightAt(
   sourceMutations: Mutation[],
   date: Date,
 ): number {
-  const weights = sources.map((s) =>
-    Math.max(0, sourceValueWithSourceMutations(s, sourceMutations, date)),
-  );
+  const weights = sources.map((s) => {
+    if (isLiabilitySource(s.type)) return 0;
+    return Math.max(0, sourceValueWithSourceMutations(s, sourceMutations, date));
+  });
   const portfolio = weights.reduce((sum, weight) => sum + weight, 0);
 
-  if (portfolio <= 0) return 1 / sources.length;
+  if (portfolio <= 0) {
+    const assetSources = sources.filter((s) => !isLiabilitySource(s.type));
+    if (assetSources.length === 0) return 1 / sources.length;
+    const assetIndex = assetSources.findIndex((s) => s.id === source.id);
+    if (assetIndex < 0) return 0;
+    return 1 / assetSources.length;
+  }
 
   const sourceIndex = sources.findIndex((s) => s.id === source.id);
   return weights[sourceIndex] / portfolio;
@@ -256,7 +272,7 @@ export function expandMutationOccurrences(
   );
 }
 
-/** Combined total across all sources (equals sum of source lines). */
+/** Combined net-worth total across all sources. */
 export function totalValueWithMutations(
   sources: Source[],
   mutations: Mutation[],
@@ -264,7 +280,11 @@ export function totalValueWithMutations(
 ): number {
   return sources.reduce(
     (sum, source) =>
-      sum + sourceValueWithMutations(source, sources, mutations, date),
+      sum +
+      sourceContributionToTotal(
+        source,
+        sourceValueWithMutations(source, sources, mutations, date),
+      ),
     0,
   );
 }
@@ -320,7 +340,7 @@ export function buildChartData(
         pointDate,
       );
       point[source.id] = value;
-      sourcesTotal += value;
+      sourcesTotal += sourceContributionToTotal(source, value);
     }
     point.total = sourcesTotal;
 

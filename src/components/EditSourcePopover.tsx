@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { parseDateInput, toDateInputValue } from "@/lib/wealth-calculations";
 import type { Source, WealthType } from "@/types/wealth";
-import { DEFAULT_GROWTH_BY_TYPE, WEALTH_TYPE_LABELS } from "@/types/wealth";
+import { DEFAULT_GROWTH_BY_TYPE, WEALTH_TYPES, WEALTH_TYPE_INITIAL_VALUE_LABELS, WEALTH_TYPE_LABELS } from "@/types/wealth";
 
 interface SourceFormValues {
   type: WealthType;
@@ -124,13 +124,11 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(WEALTH_TYPE_LABELS) as WealthType[]).map(
-                  (type) => (
-                    <SelectItem key={type} value={type}>
-                      {WEALTH_TYPE_LABELS[type]}
-                    </SelectItem>
-                  ),
-                )}
+                {WEALTH_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {WEALTH_TYPE_LABELS[type]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -155,11 +153,14 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label htmlFor={fieldId("initial")}>Initial value</Label>
+              <Label htmlFor={fieldId("initial")}>
+                {WEALTH_TYPE_INITIAL_VALUE_LABELS[values.type]}
+              </Label>
               <Input
                 id={fieldId("initial")}
                 type="number"
                 step="any"
+                min={0}
                 value={values.initialValue}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, initialValue: e.target.value }))

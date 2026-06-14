@@ -68,6 +68,9 @@ const VALID_WEALTH_TYPES = new Set<WealthType>([
   "investment",
   "cash",
   "property",
+  "pension",
+  "depreciating",
+  "debt",
 ]);
 const VALID_MUTATION_TYPES = new Set<MutationType>(["once", "recurring"]);
 const VALID_MUTATION_TARGETS = new Set<MutationTarget>(["source", "total"]);
