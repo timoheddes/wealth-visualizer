@@ -188,6 +188,7 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
               <Input
                 id={fieldId("start")}
                 type="date"
+                style={{ fontSize: "0.7em" }}
                 value={values.initialDate}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, initialDate: e.target.value }))
@@ -200,6 +201,7 @@ export function EditSourcePopover({ source, onSave }: EditSourcePopoverProps) {
               <Input
                 id={fieldId("end")}
                 type="date"
+                style={{ fontSize: "0.7em" }}
                 value={values.endDate}
                 onChange={(e) =>
                   setValues((v) => ({ ...v, endDate: e.target.value }))

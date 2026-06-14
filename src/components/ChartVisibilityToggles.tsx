@@ -1,6 +1,6 @@
+import { formatShortDate } from "@/lib/wealth-calculations";
 import { cn } from "@/lib/utils";
 import type { Mutation, Source } from "@/types/wealth";
-import { MUTATION_TYPE_LABELS } from "@/types/wealth";
 
 interface ChartVisibilityTogglesProps {
   sources: Source[];
@@ -11,11 +11,54 @@ interface ChartVisibilityTogglesProps {
   onToggleMutation: (id: string) => void;
 }
 
+type Sign = "positive" | "negative" | "neutral";
+
+function valueSign(value: number): Sign {
+  return value >= 0 ? "positive" : "negative";
+}
+
+function growthSign(growth: number): Sign {
+  if (growth > 0) return "positive";
+  if (growth < 0) return "negative";
+  return "neutral";
+}
+
+function mutationDescription(mutation: Mutation): string {
+  if (mutation.type === "recurring") {
+    return `Recurring every ${mutation.frequency} days from ${formatShortDate(mutation.date)}`;
+  }
+  return `One-off on ${formatShortDate(mutation.date)}`;
+}
+
+function SignIndicator({ sign }: { sign: Sign }) {
+  return (
+    <span
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none",
+        sign === "positive" &&
+          "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+        sign === "negative" && "bg-destructive/15 text-destructive",
+        sign === "neutral" && "bg-muted text-muted-foreground",
+      )}
+      aria-label={
+        sign === "positive"
+          ? "Positive"
+          : sign === "negative"
+            ? "Negative"
+            : "Neutral"
+      }
+    >
+      {sign === "positive" ? "+" : sign === "negative" ? "−" : "—"}
+    </span>
+  );
+}
+
 function VisibilityToggle({
   enabled,
   onToggle,
   label,
   color,
+  sign,
   description,
   disabled = false,
 }: {
@@ -23,6 +66,7 @@ function VisibilityToggle({
   onToggle: () => void;
   label: string;
   color?: string;
+  sign?: Sign;
   description?: string;
   disabled?: boolean;
 }) {
@@ -44,6 +88,7 @@ function VisibilityToggle({
             aria-hidden
           />
         )}
+        {sign && <SignIndicator sign={sign} />}
         <div className="min-w-0">
           <p
             className={cn(
@@ -125,6 +170,7 @@ export function ChartVisibilityToggles({
                 onToggle={() => onToggleSource(source.id)}
                 label={source.label}
                 color={source.color}
+                sign={growthSign(source.growth)}
               />
             ))}
           </div>
@@ -153,8 +199,9 @@ export function ChartVisibilityToggles({
                     enabled={enabledMutationIds.has(mutation.id)}
                     onToggle={() => onToggleMutation(mutation.id)}
                     label={mutation.label}
-                    color={mutation.color}
-                    description={MUTATION_TYPE_LABELS[mutation.type]}
+                    color={undefined}
+                    sign={valueSign(mutation.value)}
+                    description={mutationDescription(mutation)}
                   />
                 ))}
               </div>
@@ -183,8 +230,9 @@ export function ChartVisibilityToggles({
                       disabled={!sourceEnabled}
                       onToggle={() => onToggleMutation(mutation.id)}
                       label={mutation.label}
-                      color={mutation.color}
-                      description={MUTATION_TYPE_LABELS[mutation.type]}
+                      color={undefined}
+                      sign={valueSign(mutation.value)}
+                      description={mutationDescription(mutation)}
                     />
                   );
                 })}

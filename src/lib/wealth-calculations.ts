@@ -191,12 +191,29 @@ export function totalValueWithMutations(
   );
 }
 
-export function getDataBounds(sources: Source[]): TimeRange | null {
+export function getDataBounds(
+  sources: Source[],
+  mutations: Mutation[] = [],
+): TimeRange | null {
   if (sources.length === 0) return null;
 
-  const start = min(sources.map((s) => s.initialDate));
-  const end = max(sources.map((s) => s.endDate));
-  return { start, end };
+  const dates: Date[] = [];
+
+  for (const source of sources) {
+    dates.push(source.initialDate, source.endDate);
+  }
+
+  for (const mutation of mutations) {
+    dates.push(mutation.date);
+    if (mutation.endDate) {
+      dates.push(mutation.endDate);
+    }
+  }
+
+  return {
+    start: min(dates),
+    end: max(dates),
+  };
 }
 
 export function buildChartData(

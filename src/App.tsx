@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { TimeRangeSlider } from "@/components/TimeRangeSlider";
 import { WealthChart } from "@/components/WealthChart";
 import {
+  clampRange,
   formatCurrency,
   formatShortDate,
   getDataBounds,
@@ -126,9 +127,16 @@ export default function App() {
   );
 
   const chartBounds = useMemo(
-    () => getDataBounds(visibleSources),
-    [visibleSources],
+    () => getDataBounds(sources, mutations),
+    [sources, mutations],
   );
+
+  useEffect(() => {
+    if (!chartBounds) return;
+    setRange((current) =>
+      current ? clampRange(current, chartBounds) : null,
+    );
+  }, [chartBounds]);
 
   const chartRange = useMemo(() => {
     if (!chartBounds) return null;

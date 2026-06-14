@@ -196,6 +196,7 @@ export function MutationFormFields({
           <Input
             id={fieldId("date")}
             type="date"
+            style={{ fontSize: "0.7em" }}
             value={values.date}
             onChange={(e) => update({ date: e.target.value })}
             required
@@ -222,6 +223,7 @@ export function MutationFormFields({
             <Input
               id={fieldId("endDate")}
               type="date"
+              style={{ fontSize: "0.7em" }}
               value={values.endDate}
               onChange={(e) => update({ endDate: e.target.value })}
             />
