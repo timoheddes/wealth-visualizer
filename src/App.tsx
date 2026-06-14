@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ChartVisibilityToggles } from "@/components/ChartVisibilityToggles";
 import { CurrencySelect } from "@/components/CurrencySelect";
 import { EditMutationPopover } from "@/components/EditMutationPopover";
 import { EditSourcePopover } from "@/components/EditSourcePopover";
@@ -35,17 +36,16 @@ export default function App() {
   const [sources, setSources] = useState<Source[]>(initialState.sources);
   const [mutations, setMutations] = useState<Mutation[]>(initialState.mutations);
   const [range, setRange] = useState<TimeRange | null>(initialState.range);
+  const [enabledSourceIds, setEnabledSourceIds] = useState<Set<string>>(
+    () => new Set(initialState.sources.map((s) => s.id)),
+  );
+  const [enabledMutationIds, setEnabledMutationIds] = useState<Set<string>>(
+    () => new Set(initialState.mutations.map((m) => m.id)),
+  );
 
   useEffect(() => {
     saveAppState({ currency, sources, mutations, range });
   }, [currency, sources, mutations, range]);
-
-  const bounds = useMemo(() => getDataBounds(sources), [sources]);
-
-  const activeRange = useMemo(() => {
-    if (!bounds) return null;
-    return range ?? bounds;
-  }, [bounds, range]);
 
   const mutationsBySource = useMemo((): Array<{
     source: Source | null;
@@ -78,12 +78,40 @@ export default function App() {
     return grouped;
   }, [mutations, sources]);
 
+  const visibleSources = useMemo(
+    () => sources.filter((s) => enabledSourceIds.has(s.id)),
+    [sources, enabledSourceIds],
+  );
+
+  const visibleMutations = useMemo(
+    () =>
+      mutations.filter(
+        (m) =>
+          enabledMutationIds.has(m.id) && enabledSourceIds.has(m.sourceId),
+      ),
+    [mutations, enabledMutationIds, enabledSourceIds],
+  );
+
+  const chartBounds = useMemo(
+    () => getDataBounds(visibleSources),
+    [visibleSources],
+  );
+
+  const chartRange = useMemo(() => {
+    if (!chartBounds) return null;
+    return range ?? chartBounds;
+  }, [chartBounds, range]);
+
   function handleAddSource(source: Omit<Source, "id">) {
-    setSources((prev) => [...prev, { ...source, id: createId() }]);
+    const id = createId();
+    setSources((prev) => [...prev, { ...source, id }]);
+    setEnabledSourceIds((prev) => new Set([...prev, id]));
   }
 
   function handleAddMutation(mutation: Omit<Mutation, "id">) {
-    setMutations((prev) => [...prev, { ...mutation, id: createId() }]);
+    const id = createId();
+    setMutations((prev) => [...prev, { ...mutation, id }]);
+    setEnabledMutationIds((prev) => new Set([...prev, id]));
   }
 
   function handleUpdateSource(updated: Source) {
@@ -101,10 +129,46 @@ export default function App() {
   function handleRemoveSource(id: string) {
     setSources((prev) => prev.filter((s) => s.id !== id));
     setMutations((prev) => prev.filter((m) => m.sourceId !== id));
+    setEnabledSourceIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setEnabledMutationIds((prev) => {
+      const next = new Set(prev);
+      for (const mutationId of next) {
+        const mutation = mutations.find((m) => m.id === mutationId);
+        if (mutation?.sourceId === id) next.delete(mutationId);
+      }
+      return next;
+    });
   }
 
   function handleRemoveMutation(id: string) {
     setMutations((prev) => prev.filter((m) => m.id !== id));
+    setEnabledMutationIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSourceVisibility(id: string) {
+    setEnabledSourceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleMutationVisibility(id: string) {
+    setEnabledMutationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
@@ -310,21 +374,35 @@ export default function App() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {activeRange && bounds && (
+              {chartRange && chartBounds && visibleSources.length > 0 && (
                 <TimeRangeSlider
-                  bounds={bounds}
-                  range={activeRange}
+                  bounds={chartBounds}
+                  range={chartRange}
                   onChange={setRange}
                 />
               )}
-              {activeRange && (
+              {chartRange && visibleSources.length > 0 ? (
                 <WealthChart
-                  sources={sources}
-                  mutations={mutations}
-                  range={activeRange}
+                  sources={visibleSources}
+                  mutations={visibleMutations}
+                  range={chartRange}
                   currency={currency}
                 />
+              ) : (
+                <div className="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">
+                  {sources.length === 0
+                    ? "Add wealth sources to see the projection chart."
+                    : "Enable at least one source to see the projection chart."}
+                </div>
               )}
+              <ChartVisibilityToggles
+                sources={sources}
+                mutations={mutations}
+                enabledSourceIds={enabledSourceIds}
+                enabledMutationIds={enabledMutationIds}
+                onToggleSource={toggleSourceVisibility}
+                onToggleMutation={toggleMutationVisibility}
+              />
             </CardContent>
           </Card>
         </section>
