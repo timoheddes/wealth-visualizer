@@ -268,7 +268,7 @@ export default function App() {
   return (
     <div className="bg-background flex min-h-screen flex-col">
       <header className="border-b">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6">
+        <div className="flex w-full items-center justify-between px-4 py-5 sm:px-6">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Wealth Visualizer
@@ -300,8 +300,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid flex-1 max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[320px_1fr]">
-        <aside className="space-y-6">
+      <main className="grid w-full flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <aside className="max-w-[420px] space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Add source</CardTitle>
@@ -488,7 +488,7 @@ export default function App() {
           )}
         </aside>
 
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Projection</CardTitle>
