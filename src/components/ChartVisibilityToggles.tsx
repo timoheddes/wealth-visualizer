@@ -1,10 +1,17 @@
-import { formatShortDate } from "@/lib/wealth-calculations";
+import { formatCurrency, formatShortDate } from "@/lib/wealth-calculations";
 import { cn } from "@/lib/utils";
-import type { Mutation, Source } from "@/types/wealth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { Currency, Mutation, Source } from "@/types/wealth";
 
 interface ChartVisibilityTogglesProps {
   sources: Source[];
   mutations: Mutation[];
+  currency: Currency;
   enabledSourceIds: Set<string>;
   enabledMutationIds: Set<string>;
   onToggleSource: (id: string) => void;
@@ -30,26 +37,54 @@ function mutationDescription(mutation: Mutation): string {
   return `One-off on ${formatShortDate(mutation.date)}`;
 }
 
-function SignIndicator({ sign }: { sign: Sign }) {
+function GrowthIndicator({ growth }: { growth: number }) {
+  const sign = growthSign(growth);
+
   return (
     <span
       className={cn(
-        "flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none",
+        "flex h-4 min-w-4 shrink-0 cursor-default items-center justify-center rounded px-1 text-[10px] font-bold leading-none tabular-nums",
         sign === "positive" &&
           "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
         sign === "negative" && "bg-destructive/15 text-destructive",
         sign === "neutral" && "bg-muted text-muted-foreground",
       )}
-      aria-label={
-        sign === "positive"
-          ? "Positive"
-          : sign === "negative"
-            ? "Negative"
-            : "Neutral"
-      }
+      aria-label={growth === 0 ? "0% growth" : `${growth}% growth`}
     >
-      {sign === "positive" ? "+" : sign === "negative" ? "−" : "—"}
+      {growth === 0 ? "—" : `${growth}%`}
     </span>
+  );
+}
+
+function SignIndicator({
+  sign,
+  value,
+  currency,
+}: {
+  sign: Sign;
+  value: number;
+  currency: Currency;
+}) {
+  const formattedValue = `${value >= 0 ? "+" : ""}${formatCurrency(value, currency)}`;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "flex size-4 shrink-0 cursor-help items-center justify-center rounded text-[10px] font-bold leading-none",
+            sign === "positive" &&
+              "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+            sign === "negative" && "bg-destructive/15 text-destructive",
+            sign === "neutral" && "bg-muted text-muted-foreground",
+          )}
+          aria-label={formattedValue}
+        >
+          {sign === "positive" ? "+" : sign === "negative" ? "−" : "—"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{formattedValue}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -58,7 +93,10 @@ function VisibilityToggle({
   onToggle,
   label,
   color,
+  growth,
   sign,
+  mutationValue,
+  currency,
   description,
   disabled = false,
 }: {
@@ -66,7 +104,10 @@ function VisibilityToggle({
   onToggle: () => void;
   label: string;
   color?: string;
+  growth?: number;
   sign?: Sign;
+  mutationValue?: number;
+  currency: Currency;
   description?: string;
   disabled?: boolean;
 }) {
@@ -88,7 +129,14 @@ function VisibilityToggle({
             aria-hidden
           />
         )}
-        {sign && <SignIndicator sign={sign} />}
+        {growth != null && <GrowthIndicator growth={growth} />}
+        {sign && mutationValue != null && (
+          <SignIndicator
+            sign={sign}
+            value={mutationValue}
+            currency={currency}
+          />
+        )}
         <div className="min-w-0">
           <p
             className={cn(
@@ -131,6 +179,7 @@ function VisibilityToggle({
 export function ChartVisibilityToggles({
   sources,
   mutations,
+  currency,
   enabledSourceIds,
   enabledMutationIds,
   onToggleSource,
@@ -149,7 +198,8 @@ export function ChartVisibilityToggles({
     .filter((group) => group.mutations.length > 0);
 
   return (
-    <div className="space-y-4 border-t pt-6">
+    <TooltipProvider>
+      <div className="space-y-4 border-t pt-6">
       <div>
         <h3 className="text-sm font-medium">Chart visibility</h3>
         <p className="text-muted-foreground text-xs">
@@ -170,7 +220,8 @@ export function ChartVisibilityToggles({
                 onToggle={() => onToggleSource(source.id)}
                 label={source.label}
                 color={source.color}
-                sign={growthSign(source.growth)}
+                growth={source.growth}
+                currency={currency}
               />
             ))}
           </div>
@@ -201,6 +252,8 @@ export function ChartVisibilityToggles({
                     label={mutation.label}
                     color={undefined}
                     sign={valueSign(mutation.value)}
+                    mutationValue={mutation.value}
+                    currency={currency}
                     description={mutationDescription(mutation)}
                   />
                 ))}
@@ -232,6 +285,8 @@ export function ChartVisibilityToggles({
                       label={mutation.label}
                       color={undefined}
                       sign={valueSign(mutation.value)}
+                      mutationValue={mutation.value}
+                      currency={currency}
                       description={mutationDescription(mutation)}
                     />
                   );
@@ -241,6 +296,7 @@ export function ChartVisibilityToggles({
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

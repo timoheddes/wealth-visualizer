@@ -464,6 +464,7 @@ export default function App() {
               <ChartVisibilityToggles
                 sources={sources}
                 mutations={mutations}
+                currency={currency}
                 enabledSourceIds={enabledSourceIds}
                 enabledMutationIds={enabledMutationIds}
                 onToggleSource={toggleSourceVisibility}

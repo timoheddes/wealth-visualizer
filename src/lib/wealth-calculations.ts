@@ -26,9 +26,9 @@ function growthMultiplier(growthPercent: number, days: number): number {
 /** Value of a single source at a given date, before mutations. */
 export function sourceValueAt(source: Source, date: Date): number {
   if (isBefore(date, source.initialDate)) return 0;
+  if (isAfter(date, source.endDate)) return 0;
 
-  const growthEnd = min([date, source.endDate]);
-  const days = differenceInCalendarDays(growthEnd, source.initialDate);
+  const days = differenceInCalendarDays(date, source.initialDate);
   return source.initialValue * growthMultiplier(source.growth, days);
 }
 
@@ -59,8 +59,15 @@ function compoundedMutationValue(
   occurrenceDate: Date,
   source: Source,
   date: Date,
+  mutationType: Mutation["type"],
 ): number {
+  if (isAfter(date, source.endDate)) return 0;
   if (isBefore(date, occurrenceDate)) return 0;
+
+  // One-off withdrawals stay flat; deposits and recurring flows compound.
+  if (mutationType === "once" && amount < 0) {
+    return amount;
+  }
 
   const growthEnd = min([date, source.endDate]);
   const days = differenceInCalendarDays(growthEnd, occurrenceDate);
@@ -69,33 +76,98 @@ function compoundedMutationValue(
   return amount * growthMultiplier(source.growth, days);
 }
 
+const LIQUIDATION_THRESHOLD = 0.9;
+
+/** Date when a source is fully sold off via a large one-off withdrawal. */
+function getLiquidationDate(
+  source: Source,
+  sourceMutations: Mutation[],
+): Date | null {
+  let earliest: Date | null = null;
+
+  for (const mutation of sourceMutations) {
+    if (mutation.type !== "once" || mutation.value >= 0) continue;
+
+    const valueBefore = sourceValueWithSourceMutations(
+      source,
+      sourceMutations,
+      mutation.date,
+      mutation.id,
+      true,
+    );
+    if (valueBefore <= 0) continue;
+
+    if (Math.abs(mutation.value) >= valueBefore * LIQUIDATION_THRESHOLD) {
+      if (!earliest || isBefore(mutation.date, earliest)) {
+        earliest = mutation.date;
+      }
+    }
+  }
+
+  return earliest;
+}
+
+function sourceMutationsFor(
+  source: Source,
+  mutations: Mutation[],
+): Mutation[] {
+  return mutations.filter(
+    (m) => m.target === "source" && m.sourceId === source.id,
+  );
+}
+
+function isSourceInactive(
+  source: Source,
+  sourceMutations: Mutation[],
+  date: Date,
+): boolean {
+  if (isAfter(date, source.endDate)) return true;
+
+  const liquidationDate = getLiquidationDate(source, sourceMutations);
+  return liquidationDate != null && isAfter(date, liquidationDate);
+}
+
 /** Source value from base growth and source-targeted mutations only. */
 function sourceValueWithSourceMutations(
   source: Source,
   mutations: Mutation[],
   date: Date,
+  excludeMutationId?: string,
+  skipInactiveCheck = false,
 ): number {
+  if (isBefore(date, source.initialDate)) return 0;
+  if (isAfter(date, source.endDate)) return 0;
+
+  const sourceMutations = sourceMutationsFor(source, mutations);
+
+  if (!skipInactiveCheck && isSourceInactive(source, sourceMutations, date)) {
+    return 0;
+  }
+
+  const applicableMutations = sourceMutations.filter(
+    (m) => m.id !== excludeMutationId,
+  );
+
   const base = sourceValueAt(source, date);
 
-  const mutationTotal = mutations
-    .filter((m) => m.target === "source" && m.sourceId === source.id)
-    .reduce((sum, mutation) => {
-      const occurrences = mutationOccurrenceDatesUpTo(mutation, date);
-      return (
-        sum +
-        occurrences.reduce(
-          (occSum, occurrenceDate) =>
-            occSum +
-            compoundedMutationValue(
-              mutation.value,
-              occurrenceDate,
-              source,
-              date,
-            ),
-          0,
-        )
-      );
-    }, 0);
+  const mutationTotal = applicableMutations.reduce((sum, mutation) => {
+    const occurrences = mutationOccurrenceDatesUpTo(mutation, date);
+    return (
+      sum +
+      occurrences.reduce(
+        (occSum, occurrenceDate) =>
+          occSum +
+          compoundedMutationValue(
+            mutation.value,
+            occurrenceDate,
+            source,
+            date,
+            mutation.type,
+          ),
+        0,
+      )
+    );
+  }, 0);
 
   return base + mutationTotal;
 }
@@ -124,7 +196,10 @@ function allocatedTotalMutationsValue(
   mutations: Mutation[],
   date: Date,
 ): number {
-  const sourceMutations = mutations.filter((m) => m.target === "source");
+  const sourceMutations = sourceMutationsFor(source, mutations);
+  if (isSourceInactive(source, sourceMutations, date)) return 0;
+
+  const allSourceMutations = mutations.filter((m) => m.target === "source");
   const totalMutations = mutations.filter((m) => m.target === "total");
 
   return totalMutations.reduce((sum, mutation) => {
@@ -135,7 +210,7 @@ function allocatedTotalMutationsValue(
         const share = portfolioWeightAt(
           source,
           sources,
-          sourceMutations,
+          allSourceMutations,
           occurrenceDate,
         );
         return (
@@ -145,6 +220,7 @@ function allocatedTotalMutationsValue(
             occurrenceDate,
             source,
             date,
+            mutation.type,
           )
         );
       }, 0)
@@ -159,9 +235,11 @@ export function sourceValueWithMutations(
   mutations: Mutation[],
   date: Date,
 ): number {
-  const sourceMutations = mutations.filter((m) => m.target === "source");
+  const sourceMutations = sourceMutationsFor(source, mutations);
+  if (isSourceInactive(source, sourceMutations, date)) return 0;
+
   return (
-    sourceValueWithSourceMutations(source, sourceMutations, date) +
+    sourceValueWithSourceMutations(source, mutations, date) +
     allocatedTotalMutationsValue(source, sources, mutations, date)
   );
 }
