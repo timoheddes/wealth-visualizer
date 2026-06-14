@@ -1,4 +1,3 @@
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,9 +16,6 @@ interface CurrencySelectProps {
 export function CurrencySelect({ value, onChange }: CurrencySelectProps) {
   return (
     <div className="flex items-center gap-2">
-      <Label htmlFor="currency" className="text-muted-foreground shrink-0">
-        Currency
-      </Label>
       <Select value={value} onValueChange={(c: Currency) => onChange(c)}>
         <SelectTrigger id="currency" className="w-[180px]">
           <SelectValue />

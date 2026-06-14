@@ -68,7 +68,7 @@ export function DataTransferControls({
   return (
     <div className="flex items-center gap-2">
       <Button type="button" variant="outline" size="sm" onClick={handleExport}>
-        <Download className="size-4" />
+        <Upload className="size-4" />
         Export
       </Button>
       <LoadingButton
@@ -80,7 +80,7 @@ export function DataTransferControls({
         disabled={isImporting}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className="size-4" />
+        <Download className="size-4" />
         Import
       </LoadingButton>
       <input

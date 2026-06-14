@@ -1,6 +1,5 @@
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import type { Theme } from "@/lib/theme";
 
 interface ThemeToggleProps {
@@ -12,10 +11,7 @@ export function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
   const isDark = theme === "dark";
 
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor="theme-toggle" className="text-muted-foreground shrink-0">
-        Theme
-      </Label>
+    <div className="flex items-end gap-2">
       <Button
         id="theme-toggle"
         type="button"

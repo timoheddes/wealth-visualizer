@@ -279,23 +279,27 @@ export default function App() {
             </p>
             <HowItWorksSheet />
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-4">
-            <DataTransferControls
-              appState={{
-                currency,
-                sources,
-                mutations,
-                range,
-                mutationLinkGroups,
-              }}
-              theme={theme}
-              enabledSourceIds={enabledSourceIds}
-              enabledMutationIds={enabledMutationIds}
-              mutationLinkGroups={mutationLinkGroups}
-              onImport={handleImport}
-            />
-            <ThemeToggle theme={theme} onChange={setTheme} />
-            <CurrencySelect value={currency} onChange={setCurrency} />
+          <div className="flex flex-col items-end justify-end gap-4">
+            <div className="flex flex-row items-end gap-2">
+              <CurrencySelect value={currency} onChange={setCurrency} />
+              <ThemeToggle theme={theme} onChange={setTheme} />
+            </div>
+            <div>
+              <DataTransferControls
+                appState={{
+                  currency,
+                  sources,
+                  mutations,
+                  range,
+                  mutationLinkGroups,
+                }}
+                theme={theme}
+                enabledSourceIds={enabledSourceIds}
+                enabledMutationIds={enabledMutationIds}
+                mutationLinkGroups={mutationLinkGroups}
+                onImport={handleImport}
+              />
+            </div>
           </div>
         </div>
       </header>
