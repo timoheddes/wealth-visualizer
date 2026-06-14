@@ -1,4 +1,4 @@
-import { Download, Upload } from "lucide-react";
+import { Download, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/LoadingButton";
@@ -20,6 +20,7 @@ interface DataTransferControlsProps {
   enabledMutationIds: Set<string>;
   mutationLinkGroups: MutationLinkGroup[];
   onImport: (data: ImportResult) => void;
+  onReset: () => void;
 }
 
 export function DataTransferControls({
@@ -29,6 +30,7 @@ export function DataTransferControls({
   enabledMutationIds,
   mutationLinkGroups,
   onImport,
+  onReset,
 }: DataTransferControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -65,6 +67,16 @@ export function DataTransferControls({
     runImport(() => onImport(result));
   }
 
+  function handleDeleteAllData() {
+    const confirmed = window.confirm(
+      "Delete all data? Your sources, mutations, chart settings, and visibility toggles will be cleared. This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setImportError(null);
+    onReset();
+  }
+
   return (
     <div className="flex items-center gap-2">
       <Button type="button" variant="outline" size="sm" onClick={handleExport}>
@@ -93,6 +105,15 @@ export function DataTransferControls({
       {importError && (
         <span className="text-destructive text-xs">{importError}</span>
       )}
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        onClick={handleDeleteAllData}
+        aria-label="Delete all data"
+      >
+        <Trash2 className="size-4" />
+      </Button>
     </div>
   );
 }

@@ -29,7 +29,7 @@ import {
 } from "@/lib/wealth-calculations";
 import type { Currency, Mutation, Source, TimeRange } from "@/types/wealth";
 import { MUTATION_TYPE_LABELS, WEALTH_TYPE_LABELS } from "@/types/wealth";
-import { loadAppState, saveAppState } from "@/lib/storage";
+import { loadAppState, saveAppState, getDefaultAppState, clearAppState } from "@/lib/storage";
 import type { ImportResult } from "@/lib/export-import";
 import {
   createLinkGroup,
@@ -283,6 +283,18 @@ export default function App() {
     setMutationLinkGroups(data.mutationLinkGroups);
   }
 
+  function handleResetData() {
+    const defaults = getDefaultAppState();
+    clearAppState();
+    setCurrency(defaults.currency);
+    setSources(defaults.sources);
+    setMutations(defaults.mutations);
+    setRange(defaults.range);
+    setEnabledSourceIds(new Set(defaults.enabledSourceIds));
+    setEnabledMutationIds(new Set(defaults.enabledMutationIds));
+    setMutationLinkGroups(defaults.mutationLinkGroups);
+  }
+
   return (
     <div className="bg-background flex min-h-screen flex-col cursor-default">
       <header className="border-b">
@@ -322,6 +334,7 @@ export default function App() {
                 enabledMutationIds={enabledMutationIds}
                 mutationLinkGroups={mutationLinkGroups}
                 onImport={handleImport}
+                onReset={handleResetData}
               />
             </div>
           </div>

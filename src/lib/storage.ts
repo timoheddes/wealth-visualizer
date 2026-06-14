@@ -318,6 +318,26 @@ export function loadAppState(): AppState {
   }
 }
 
+export function getDefaultAppState(): AppState {
+  return {
+    currency: DEFAULT_APP_STATE.currency,
+    sources: [],
+    mutations: [],
+    range: null,
+    mutationLinkGroups: [],
+    enabledSourceIds: [],
+    enabledMutationIds: [],
+  };
+}
+
+export function clearAppState(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Ignore quota or privacy mode errors.
+  }
+}
+
 export function saveAppState(state: AppState): void {
   const stored = toStoredPayload(state);
 
